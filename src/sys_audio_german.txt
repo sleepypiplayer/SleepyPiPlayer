@@ -1,0 +1,85 @@
+https://www.narakeet.com/   German-Standard "Gertrud"  (6 EUR gezahlt 2024-09 als user "Sleepy": Commercial users get full usage rights.)
+. null
+. eins
+. ein
+. zwei
+. drei
+. vier
+. fünf
+. sechs
+. sieben
+. acht
+. neun
+. zehn
+. elf
+. zwölf
+. dreizehn
+. vierzehn
+. fünfzehn
+. sechzehn
+. siebzehn
+. achzehn
+. neunzehn
+. zwanzig
+. dreißig
+. vierzig
+. fünfzig
+. sechzig
+. siebzig
+. achzig
+. neunzig
+. einhundert
+. zweihundert
+. dreihundert
+. vierhundert
+. fünfhundert
+. sechshundert
+. siebenhundert
+. achthundert
+. neunhundert
+. eintausend
+. tausend
+. ungültig
+. und
+. Verzeichnis
+. Datei
+. Minute
+. Lautstärke
+. von
+. Service ... WLAN aktiv ... bitte MP3 Dateien aktualisieren
+. Achtung ... ein Knopfdruck verhindert automatisches Abschalten
+. Achtung ... Prüfsummenfehler in gespeicherter Position
+. Achtung ... Problem mit MP3-Datei
+. Achtung ... keine MP3-Dateien gefunden
+. ich schalte aus
+. A
+. B
+. C
+. D
+. E
+. F
+. G
+. H
+. I
+. J
+. K
+. L
+. M
+. N
+. O
+. P
+. Q
+. R
+. S
+. T
+. U
+. V
+. W
+. X
+. Y
+. Z
+. Leerzeichen
+. Strich
+. Spezial
+. Punkt
+. Schrägstrich

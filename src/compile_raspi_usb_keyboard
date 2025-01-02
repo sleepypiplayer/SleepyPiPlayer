@@ -1,0 +1,3 @@
+
+g++ MainApplication.cpp KeyInput.cpp GpioPinSimulation_usb_keyboard.cpp SystemConfigFile.cpp PlaybackInfo.cpp Mp3DirFileList.cpp AudioPlayer.cpp SystemSoundCatalog.cpp AudioFeedback.cpp NumberToSound.cpp AudioVolumeConversion.cpp PersistentStorage.cpp -Wall -g -lmpg123 -lout123 -o sleepy
+

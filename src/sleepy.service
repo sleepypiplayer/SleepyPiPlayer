@@ -1,0 +1,12 @@
+[Unit]
+Description=start sleepy mp3 playback
+Requires=sound.target
+Wants=dbus.service
+
+[Service]
+Type=simple
+ExecStart=/SLEEPY_FW/sleepy/sleepy
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

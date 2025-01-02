@@ -1,0 +1,438 @@
+FÜR DIESE SOFTWARE GIBT ES KEINERLEI GARANTIE, NUTZUNG AUF EIGENE GEFAHR
+
+"SleepyPiPlayer" spielt MP3-Dateien ab.
+Es schaltet sich selbständig nach einer festgelegten Zeit ab.
+Um diese Software zu benutzen, sollte das Hörbuch mit "mp3splt"
+in 5 Minuten lange Abschnitte geteilt werden.
+Man kann es in kompletter Dunkelheit ohne Brille benutzen.
+
+Lizenz: freie Software (sleepypiplayer(at)saftfresse.de)  [Anno.2025]
+- Die Software darf beliebig verwendet werden.
+- FÜR DIESE SOFTWARE GIBT ES KEINERLEI GARANTIE, NUTZUNG AUF EIGENE GEFAHR
+
+ -------------------------------------------------------
+Anwendungsfall
+- Den roten Knopf drücken um den MP3-Spieler einzuschalten
+- den weißen Datei-zurück Knopf mehrfach drücken
+  (Wenn man einschläft, kann man sich nicht mehr an alles erinnern.)
+- Dem Hörbuch lauschen und dabei einschlafen.
+- Das Gerät schaltet sich automatisch nach einigen Minuten ab.
+
+einschalten: "Datei 17 von 59"
+abschalten:  "Ein Knopfdruck verhindert automatisches Abschalten  9 8 7 6 5 4 3 2 1 0"
+
+Wenn der Einschalt-Text nicht zu hören ist, wurden die System-MP3-Dateien nicht gefunden.
+Überprüfen: SYSTEM_SOUND_PATH in sleepy.cfg
+
+Man kann die Software auch ohne Raspberry schon mal ausprobieren:  compile_pc   ./try_pc
+
+-------------------------------------------------------
+Eigenschaften:
++ ertastbare Knöpfe
++ immer aktive automatische Abschaltung nach einigen Minuten
++ Abspielposition wird gespeichert
+- Der Raspberry braucht 20 Sekunden zum starten.
+
+meine Komponenten
+- raspberry pi zero 2W
+- Intenso 7313530 Powerbank XS 10000
+- Adafruit Panel Mount Extension USB Cable
+- Pimoroni OnOff SHIM (https://github.com/pimoroni/clean-shutdown)
+- UGREEN External USB Sound Card Jack USB Adapter
+- 24mm Arcade Buttons
+- Adafruit Speaker - 3" Diameter - 4 Ohm 3 Watt
+- sourcing map Speaker Grille Cover 3 Inch 95 mm Mesh
+
+hilfreich
+ein Loch im Gehäuse, um die LEDs der Powerbank zu erkennen
+
+meine Quelle für die Bauteile
+https://menner-maidi.de/phoniebox-diy-alternative-zur-toniebox/
+
+-------------------------------------------------------
+MP3-Dateien: Hörbuch in 5-Minuten-Abschnitte teilen
+
+lame -h --noreplaygain --cbr -b 64 -s 32 -m m original.mp3 small_size.mp3
+mp3gain -r small_size.mp3
+mp3splt -f -t 5.0 -a -o @f_@m4 -g "r%[@t=MyTitle_@m]" small_size.mp3
+
+-------------------------------------------------------
+Übersetzen am Linux-PC um einfacher zu entwickeln und zu testen
+- cd sleepy
+- sleepy.cfg prüfen  (DISABLE_WIFI=OFF/AUTO_SHUTDOWN=-1)
+- chmod 447 compile_pc
+- ./compile_pc
+- sleepy.cfg nochmal prüfen (um sicher zu gehen)
+- ./try_pc
+
+-------------------------------------------------------
+Tasten
+- (GPIO_17-rot)    ein/aus
+- (GPIO_20-schwarz)  leise kurz-drücken: Lautstärke  20..100%
+- (GPIO_19-schwarz)  laut  kurz-drücken: Lautstärke  20..100%
+- (GPIO_21-weiss)  zurück  kurz-drücken: eine Datei zurück
+- (GPIO_21-weiss)  zurück  lang-drücken: schneller Rücklauf
+- (GPIO_13-weiss)  forw.   kurz-drücken: eine Datei vorwärts
+- (GPIO_13-weiss)  forw.   lang-drücken: schneller Vorlauf
+- (GPIO_16-gelb)   info    kurz drücken: Information Abspielposition
+- (gelb-lang-drücken und weiss-kurz-drücken):  Verzeichnis wählen
+- (gelb-lang-drücken und weiss-lang-drücken):  Dateien schnell ändern
+- (GPIO_26-blau-lang-drücken und beide weisse-lang-drücken): Service-Mode
+
+-------------------------------------------------------
+
+Service-Mode - aktualisieren der MP3-Dateien am raspberry
+ Abspielen stoppt und WLAN schaltet sich am raspberry ein.
+ Am raspberry einloggen:
+   ssh dietpi@192.168.XX.XX
+ MP3-Partition beschreibbar machen
+   mount -o remount,rw /SLEEPY_MP3
+ Service-Mode schaltet das Gerät aus sobald der rote Knopf gedrückt wird.
+ Nach 20 Minuten: der Service-Mode startet den 15-Minuten-Abschalt-Countdown
+ Um die Software neu zu übersetzen:
+   sudo systemctl stop sleepy
+   sudo shutdown -c
+   mount -o remount,rw /SLEEPY_FW
+   [mach was nötig ist]
+   sudo reboot
+ Wenn man etwas am root-file-system ändern will:
+   mount -o remount,rw /
+ Veränderungen an der SD-Karte prüfen
+   umount /dev/mmcblk0p3
+   cat /dev/mmcblk0p3 | ssh user@192.168.XX.XX 'cat > /home/XX/raspi_fw.bin'
+   (nimm hexdump und kdiff3 um nach Unterschieden zu suchen)
+
+
+
+============================================================
+============================================================
+============================================================
+ Schritt für Schritt Anleitung um die SD-card zu beschreiben
+ (funktionierte am 2024-12-20)
+============================================================
+============================================================
+
+Nimm "DietPi":
+Das startet 5 Sekunden schneller als das normale "Raspberry Pi OS".
+
+Download image von https://dietpi.com
+Raspberry Pi 2/3/4/Zero 2   BCM2710/2711 900-1800 MHz | 4 Cores | ARMv8
+xz -d DietPi_RPi-ARMv8-Bookworm.img.xz
+sd-card  linux-mint:   mintstick -m iso
+
+lsblk
+sudo umount /dev/sdd1
+sudo umount /dev/sdd2
+sudo fatlabel /dev/sdd1 BOOT
+sudo e2label  /dev/sdd2 root
+
+mount sdd1=(BOOT)  and  sdd2=(ROOT)
+
+sudo mkdir /media/xxx/root/SLEEPY_FW
+sudo mkdir /media/xxx/root/SLEEPY_SAVE
+sudo mkdir /media/xxx/root/SLEEPY_MP3
+
+Einige Einstellungen an der SD-Karte vornehmen:
+
+nano /media/xxx/BOOT/dietpi.txt
+  AUTO_SETUP_KEYBOARD_LAYOUT=de
+  AUTO_SETUP_NET_ETHERNET_ENABLED=0
+  AUTO_SETUP_NET_WIFI_ENABLED=1
+  AUTO_SETUP_NET_WIFI_COUNTRY_CODE=DE
+
+nano /media/xxx/BOOT/dietpi-wifi.txt
+  aWIFI_SSID[0]='mein_wifi'
+  aWIFI_KEY[0]='mein_passwort'
+  aWIFI_KEYMGR[0]='WPA-PSK'
+
+sudo nano /media/xxx/root/etc/fstab
+  setze Größe von /tmp auf 7M
+    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
+  setze Größe von /var auf 5M
+    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
+  füge neue Partitionen hinzu  (xxxxxxxx ersetzen: siehe Partition.1)
+    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime                 0    2
+    PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
+    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime                 0    2
+
+
+-------------------------------------------------------
+
+Vor dem Einsetzen der SD-Karte in den Raspberry,
+müssen noch einige Partitionen erstellt werden mit "GParted".
+- den PC nach dem Schreiben vom Betriebssystem ausschalten
+- die SD-Karte entfernen
+- den PC neu starten bevor GParted benutzt wird
+- die SD-Karte einsetzen
+- umount der SD-Karte   "umount /dev/sde1" / "umount /dev/sde2"
+- starte gparted als root
+- die SD-Karte in gparted auswählen (nicht die PC-Festplatte editieren)
+- die Größe von Partition.2 "rootfs" auf 2560 MiB setzen
+- lege Partition.3 mit der Größe 512 MiB an             (primary / ext.4)  "SLEEPY_FW"
+- lege Partition.4 mit der restlichen Laufwerksgröße an "extended partition"
+- lege Partition.5 mit der Größe 512 MiB an             (logic / fat32)   "SLEEPY_SAVE"
+- lege Partition.6 mit der restlichen Laufwerksgröße an (logic / ext.4)   "SLEEPY_MP3"
+-> schreibe die Partitionen auf die SD-Karte (toolbar - Pfeil-Symbol)
+-> schließe gparted
+
+(Partition 1 und 2 wurden vom dietpi-image angelegt.)
+Partition.1 Fat32  128M  erzeugt von DietPi image        /boot
+partition.2 ext4  2560M  erzeugt von DietPi image        /
+partition.3 ext4   512M  sleepypi (software)             /SLEEPY_FW
+partition.4 extended partition restlicher Speicherplatz
+partition.5 Fat32  512M  save/storage.bin                /SLEEPY_SAVE
+partition.6 ext4  ????M  mp3                             /SLEEPY_MP3
+
+-----
+
+lege die Verzeichnisse am Linux-PC oder am raspberry an
+
+mkdir     /SLEEPY_FW/sleepy
+chmod 777 /SLEEPY_FW/sleepy
+
+mkdir     /SLEEPY_MP3/mp3
+chmod 777 /SLEEPY_MP3/mp3
+
+mkdir /SLEEPY_SAVE/save
+
+kopiere Dateien nach /SLEEPY_FW/sleepy/SysMP3
+kopiere Dateien nach /SLEEPY_FW/sleepy/Documentation
+kopiere Dateien nach /SLEEPY_FW/sleepy/src
+kopiere Dateien nach /SLEEPY_MP3/mp3/audiobook1
+kopiere Dateien nach /SLEEPY_MP3/mp3/audiobook2
+kopiere Dateien nach /SLEEPY_MP3/mp3/audiobook3
+
+SLEEPY_FW/sleepy$  ln -s /src/sleepy     sleepy
+SLEEPY_FW/sleepy$  ln -s /src/sleepy.cfg sleepy.cfg
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+setze die SD-Karte im raspberry ein und logge dich via SSH ein
+(die IP-Adresse dafür kann der DHCP-Server im WLAN-Router liefern)
+
+(password: "dietpi")
+ssh root@192.168.1.123
+
+-----
+
+# nebenbei: das zentrale dietpi-config-tool: "dietpi-launcher"
+aktuell wird "dietpi-sortware" ausgeführt   ESC=zurück
+  survey: no  ("opt out")
+  password: setze das gleiche Passwort für alle Abfragen
+  UART: disable <yes>
+  select "DietPi-Config"
+    "Display Options"
+      "Display Resolution"
+         -> set "Headless"   (ohne Bildschirm)
+      "LED Control"
+        "ACT"
+          -> set "none"
+        "PWR"
+          -> set "none"
+    "Audio Options"
+      "Enable: install ALSA"
+        -> OK
+      "Sound card"
+        -> set "hw:0,0" : Device USB Audio
+      "Auto-conversion"
+        -> set "On"
+  -> "SSH-server"  ändere auf "OpenSSH Server"
+  -> "Log System"  behalte    "DeitPi-RAMlog#1"
+  -> "Install"     select "OK"
+
+sudo reboot
+
+-----
+
+ssh dietpi@192.168.1.123
+  sudo apt-get update
+  sudo apt-get upgrade
+  sudo reboot
+
+-------------------------------------------------------
+
+sudo nano /etc/fstab
+  setze Größe von /tmp auf 7M
+    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
+  setze Größe von /var/log auf 5MB
+    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
+
+-------------------------------------------------------
+
+installiere  ON-OFF-SHIM  software
+
+ssh dietpi@192.168.1.123
+sudo curl https://get.pimoroni.com/onoffshim | bash
+-> reboot ->  "no"
+
+
+### Probleme mit Raspbery Tasten-Druck-Erkennung ??? ###
+  https://github.com/raspberrypi/linux/issues/6037
+    /sys/class/gpio  die nummern haben sich um 512 geändert
+
+Auch der OnOff-Shim ist betroffen:
+    https://github.com/pimoroni/clean-shutdown
+    https://github.com/pimoroni/clean-shutdown/issues/37
+
+Ersetze /sys/class/gpio/... mit pinctrl
+  sudo nano /lib/systemd/system-shutdown/gpio-poweroff
+        #/bin/echo $poweroff_pin > /sys/class/gpio/export
+        #/bin/echo out > /sys/class/gpio/gpio$poweroff_pin/direction
+        #/bin/echo 0 > /sys/class/gpio/gpio$poweroff_pin/value
+        pinctrl set $poweroff_pin ip pd
+        /bin/sleep 0.5
+
+-------------------------------------------------------
+
+setze die Lautstärke "speaker-volume" auf etwa 85 Prozent
+setze die Mikrofon-Empfindlichkeit auf 0 Prozent
+   sudo alsamixer
+
+-----
+
+installiere noch einige Pakete
+  sudo apt-get install libout123-0
+  sudo apt-get install libmpg123-dev
+  sudo apt-get install mpg123
+  sudo apt-get install libgpiod-dev
+  sudo apt-get install dbus
+  sudo apt-get install rfkill
+  sudo apt-get install g++
+  sudo apt-get install less
+
+sudo systemctl unmask systemd-logind
+sudo systemctl start dbus systemd-logind
+
+-----
+
+übersetze den Quellcode am Raspberry
+  cd /SLEEPY_FW/sleepy/src
+  chmod 447 compile_raspi_gpiod_1_6
+  ./compile_raspi_gpiod_1_6
+
+-----
+
+überarbeite die Einstellungen
+"DISABLE_WIFI" sollte "OFF" sein, solange das Sytem noch nicht komplett funktioniert
+  nano /SLEEPY_FW/sleepy/src/sleepy.cfg
+
+-------------------------------------------------------
+
+automatisches Starten der Sleepy-Software
+sudo cp sleepy.service /etc/systemd/system
+sudo systemctl enable sleepy
+
+check sleepy.cfg
+"DISABLE_WIFI" sollte "OFF" sein, solange das Sytem noch nicht komplett funktioniert
+
+Starte den Raspberry neu und stelle sicher, dass die Software startet und MP3s abspielt
+Probleme? Vermutlich muss /SLEEPY_FW/sleepy/src/sleepy.cfg angepasst werden.
+sudo reboot
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
+
+die Aufstart-Zeiten prüfen, bevor auf ein Nur-Lese Dateisystem gewechselt wird
+   systemd-analyze critical-chain
+   systemd-analyze plot > boot_time.svg
+   systemctl list-unit-files
+   systemctl list-units
+   systemctl list-dependencies networking
+
+
+schnellere Aufstart-Zeiten durch abschalten von Netzwerk-Diensten
+ACHTUNG:  bitte nur ausprobieren, wenn das System vollständig funktioniert
+Wenn etwas schief geht, könnte es nötig sein, die SD-Karte nochmal
+vollständig neu zu beschreiben.
+
+sudo systemctl disable ifup@wlan0
+sudo systemctl disable wpa_supplicant
+sudo systemctl disable networking
+sudo systemctl disable NetworkManager
+sudo systemctl disable bluetooth
+sudo systemctl disable systemd-rfkill
+sudo systemctl disable systemd-random-seed
+sudo systemctl disable systemd-timesyncd
+
+nano /SLEEPY_FW/sleepy/src/sleepy.cfg
+  DISABLE_WIFI ON
+
+-> von jetzt an muss der Service-Mode gestartet werden, um sich mit SSH einzuloggen
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
+
+Schreib-Vorgänge auf die SD-Karte vermeiden
+ACHTUNG:  bitte nur ausprobieren, wenn das System vollständig funktioniert
+Wenn etwas schief geht, könnte es nötig sein, die SD-Karte nochmal
+vollständig neu zu beschreiben.
+
+SD-Karten erlauben nur eine begrezte Anzahl von Schreib-Zyklen.
+Unter normalen Bedingungen, muss lediglich die aktuelle
+Abspielposition gespeichert werden.
+
+Selbst wenn eine Partition als Nur-Lesen eingehängt wird,
+verändert das System einen Zähler für Mount-Vorgänge auf der SD-Karte.
+
+Wenn eine Partition als beschreibbar eingehängt wird,
+werden noch mehr Daten auf der Karte verändert,
+auch wenn keine Datei verändert wird.
+
+Ratschlag: SLC-Flash SD-Karten mit der Bezeichnung "industrial" verwenden
+
+- Dateisystem-Prüfung abstellen, da wir fast nur noch lesen
+  sudo systemctl disable systemd-fsckd
+
+
+sudo nano /etc/fstab
+# /etc/fstab  --  mount root-file-system read-only (Nur-Lesend)
+# "ro" anhängen: "read-only"  bei partition.1,  partition.2, partition.3 and partition.6
+# => partition.5 "SLEEPY_SAVE" muss beschreibbar bleiben
+# WLAN-Probleme: Man kann immer noch die SD-Karte entnehmen und fstab und alle anderen Dateien editieren.
+PARTUUID=59786d62-01  /boot         vfat    noatime,lazytime,ro                      0    2
+PARTUUID=59786d62-02  /             ext4    noatime,lazytime,ro                      0    1
+PARTUUID=59786d62-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    2
+PARTUUID=59786d62-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    2
+PARTUUID=59786d62-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    2
+
+---
+
+überprüfen
+sudo nano /etc/fstab
+  Größe von /tmp ist 7M
+    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
+  Größe von /var/log ist 5M
+    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
+
+---
+
+# Schreibzugriff nach SSH-login erlauben:
+sudo mount -o remount,rw /
+sudo mount -o remount,rw /SLEEPY_MP3
+sudo mount -o remount,rw /SLEEPY_FW
+partition.5 bleibt read-write   "SLEEPY_SAVE"
+
+prüfen:  /SLEEPY_FW/sleepy/src/sleepy.cfg
+DISABLE_WIFI ON
+
+----------------------------------------------------------
+
+Nach dem Umkopieren der MP3-Dateien nach /SLEEPY_mp3/mp3
+kann man den directory-index optimieren
+
+# device is busy
+ps -aux | grep sleepy
+sudo kill 321
+
+"lsblk" liefert den Device-Namen
+
+sudo umount /SLEEPY_MP3
+sudo tune2fs -O dir_index /dev/mmcblk0p6
+sudo e2fsck -fD /dev/mmcblk0p6
+sudo reboot
+
+----------------------------------------------------------
+
+sudo poweroff

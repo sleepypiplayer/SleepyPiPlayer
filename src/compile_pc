@@ -1,0 +1,3 @@
+
+g++ MainApplication.cpp KeyInput.cpp GpioPinSimulation_pc.cpp SystemConfigFile.cpp PlaybackInfo.cpp Mp3DirFileList.cpp AudioPlayer.cpp SystemSoundCatalog.cpp AudioFeedback.cpp NumberToSound.cpp AudioVolumeConversion.cpp PersistentStorage.cpp -Wall -g -lX11 -lmpg123 -lout123 -o try_pc
+

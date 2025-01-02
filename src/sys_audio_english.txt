@@ -1,0 +1,85 @@
+https://www.narakeet.com/   English-American  "Debbie"  (paid 6 EUR 2024-09 as user "Sleepy": Commercial users get full usage rights.)
+. zero
+. one
+. one
+. two
+. three
+. four
+. five
+. six
+. seven
+. eight
+. nine
+. ten
+. eleven
+. twelve
+. thirteen
+. fourteen
+. fifteen
+. sixteen
+. seventeen
+. eightteen
+. nineteen
+. twenty
+. thirty
+. fourty
+. fifty
+. sixty
+. seventy
+. eighty
+. ninety
+. onehundred
+. twohundred
+. threehundred
+. fourhundred
+. fivehundred
+. sixhundred
+. sevenhundred
+. eighthundred
+. ninehundred
+. onethousand
+. thousand
+. invalid
+. and
+. directory
+. file
+. minute
+. volume
+. of
+. service-mode ... WIFI active ... please update MP3-files
+. attention ... a keypress prevents automatic shutdown
+. attention ... checksum error in saved position
+. attention ... Problem with MP3-file
+. attention ... no MP3-file found
+. shutting down
+. A
+. B
+. C
+. D
+. E
+. F
+. G
+. H
+. I
+. J
+. K
+. L
+. M
+. N
+. O
+. P
+. Q
+. R
+. S
+. T
+. U
+. V
+. W
+. X
+. Y
+. zed
+. space
+. dash
+. special
+. dot
+. slash
