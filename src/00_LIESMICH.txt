@@ -1,4 +1,4 @@
-FÜR DIESE SOFTWARE GIBT ES KEINERLEI GARANTIE, NUTZUNG AUF EIGENE GEFAHR
+﻿FÜR DIESE SOFTWARE GIBT ES KEINERLEI GARANTIE, NUTZUNG AUF EIGENE GEFAHR
 
 "SleepyPiPlayer" spielt MP3-Dateien ab.
 Es schaltet sich selbständig nach einer festgelegten Zeit ab.

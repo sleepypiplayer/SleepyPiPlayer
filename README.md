@@ -1,4 +1,4 @@
-
+﻿
 # SleepyPiPlayer
 
 * play audiobooks as MP3-file when falling asleep
@@ -34,3 +34,40 @@
 
 ## further details in
 src/00_README.txt
+
+
+# SleepyPiPlayer
+
+* spielt Hörbücher als MP3-Dateien beim Einschlafen
+* ständig aktive Abschaltautomatik -> schaltet nach einigen Minuten ab
+* basiert auf einem Raspberry-PI mit Powerbank und USB-Soundkarte
+* akustische Rückmeldung anstatt einer Anzeige
+* echte fühlbare Tasten können ohne Brille in kompletter Dunkelheit betätigt werden
+* einfache Bedienung ohne Menü und Untermenü
+* minimale Anzahl von benötigten Tastendrücken im Standardfall
+
+## Probleme mit standard MP3-Spielern
+
+* In den meisten Fällen muss man die automatische Abschaltung jedes mal neu einschalten.
+* Die Einstellung für das automatische Abschalten ist in einem Untermenü versteckt.
+* Im Bett trägt man keine Brille. Die Bedienung mit einer Anezige ist problematisch.
+* Smarte Mobiltelefone können ohne Brille nicht bedient werden.
+* Mann benötigt eine komplizierte Interaktion um die Abspielposition zu verändern.
+
+## das benötigt man für einen SleepyPiPlayer
+
+* die Hardware kaufen
+* ein Gehäuse finden und die Komponenten einbauen
+* den Raspberry mit den Tasten, der Soundkarte und der Powerbank verbinden
+* das Raspberry-Betriebssystem auf einer SD-Karte installieren
+* den Quellcode übersetzen (compilieren)
+* einige Konfigurationen vornehmen
+
+## moderater Schwierigkeitsgrad
+
+* siehe hardware/00_sleepypiplayer_pin_layout.png
+* siehe hardware/01_sleepypiplayer_front.jpg
+
+
+## further details in
+src/00_LIESMICH.txt
