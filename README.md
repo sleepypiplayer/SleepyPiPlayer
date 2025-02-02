@@ -69,5 +69,5 @@ src/00_README.txt
 * siehe hardware/01_sleepypiplayer_front.jpg
 
 
-## further details in
+## weitere Details in
 src/00_LIESMICH.txt
