@@ -75,3 +75,4 @@ src/00_LIESMICH.txt
 
 
 ![pin-layout](https://github.com/sleepypiplayer/SleepyPiPlayer/blob/main/hardware/00_sleepypiplayer_pin_layout.png?raw=true "pin-layout")
+![front](https://github.com/sleepypiplayer/SleepyPiPlayer/blob/main/hardware/01_sleepypiplayer_front.jpg?raw=true "front of player")
