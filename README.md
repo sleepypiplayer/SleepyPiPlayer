@@ -71,3 +71,7 @@ src/00_README.txt
 
 ## weitere Details in
 src/00_LIESMICH.txt
+
+
+
+![pin-layout](https://github.com/sleepypiplayer/SleepyPiPlayer/blob/main/hardware/00_sleepypiplayer_pin_layout.png?raw=true "pin-layout")
