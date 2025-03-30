@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // SleepyPiPlayer:  Mp3DirFileList
 //     create list of directories containing MP3-Files used for Playback
 // license: free software   (sleepypiplayer(at)saftfresse.de)  [A.D.2025]
@@ -189,7 +189,7 @@ PlaybackInfo Mp3Directory::GetPrevFile()
       m_dPosSeconds = 0.0;
       return GetCurrentFile();
    }
-   if (m_dPosSeconds > 25.0)
+   if (m_dPosSeconds > 59.0)
    {
       m_dPosSeconds = 0.0;
    }

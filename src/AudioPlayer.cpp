@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // SleepyPiPlayer:  AudioPlayer
 //     play mp3-files
 //     handle key-press
@@ -387,14 +387,14 @@ int64_t AudioPlayer::PrivateData::SetFastPlaybackPosInMp3File()
       int64_t nStepSizeSamples = nSamplesPerMinute * nStepSizeMinutes;
       if (m_bPlayFastForw)
       {
-         nNewSampleIdx = nOldSampleIdx + nStepSizeSamples;
+         nNewSampleIdx = nOldSampleIdx + nStepSizeSamples + nStepSizeSamples/8;
          nNewSampleIdx = nStepSizeSamples * (nNewSampleIdx / nStepSizeSamples);
          if (nNewSampleIdx < nOldSampleIdx + nSamplesPerMinute / 6)
             nNewSampleIdx += nStepSizeSamples;
       }
       else
       {
-         nNewSampleIdx = nOldSampleIdx - nStepSizeSamples;
+         nNewSampleIdx = nOldSampleIdx - nStepSizeSamples/2;
          nNewSampleIdx = nStepSizeSamples * (nNewSampleIdx / nStepSizeSamples);
          if (nNewSampleIdx > nOldSampleIdx - nSamplesPerMinute / 6)
             nNewSampleIdx -= nStepSizeSamples;
@@ -409,7 +409,6 @@ int64_t AudioPlayer::PrivateData::SetFastPlaybackPosInMp3File()
             nNewPositionInMinutes = nNewSampleIdx / nSamplesPerMinute;
       }
    }
-
    return nNewPositionInMinutes;
 }
 

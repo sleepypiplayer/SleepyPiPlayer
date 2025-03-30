@@ -617,7 +617,7 @@ void AudioFeedback::PrivateData::InfoRequest(PlaybackInfo info)
       m_NumberToSound->AddNumber(listAudioMain, info.GetNofFiles());
       listAudioMain.push_back(m_SoundCatalog.Silence());
       listAudioMain.push_back(m_SoundCatalog.Text_Minute());
-      int nMinute = (int)((info.GetPlaybackPos()+30.0) / 60.0);
+      int nMinute = (int)((info.GetPlaybackPos()+10.0) / 60.0);
       m_NumberToSound->AddNumber(listAudioMain,nMinute);
       listAudioMain.push_back(m_SoundCatalog.Silence());
       listAudioMain.push_back(m_SoundCatalog.Text_Directory());
