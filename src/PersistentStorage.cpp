@@ -342,7 +342,7 @@ void PersistentStorage::PrivateData::EnsureFilesExist()
                for (int i = 0; i < nBufferSize; i++)  ((char*)pBuffer)[i] = ' ';
                int64_t nNofWritten = 1;
                int64_t nFileSize   = 0;
-               while (nNofWritten > 1 && nFileSize < RECORD_SIZE)
+               while (nNofWritten > 0 && nFileSize < RECORD_SIZE)
                {
                   nNofWritten = std::fwrite(pBuffer, 1, nBufferSize, pFile);
                   nFileSize += nNofWritten;
