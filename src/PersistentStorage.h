@@ -34,7 +34,15 @@ public:
 
    std::string GetPlaybackPath();
    double      GetPlaybackTime(); // in seconds
-   void        SetPlayback(std::string txtPath, double dTime);
+   void        SetPlayback(const std::string& txtPath, double dTime);
+
+   // some additional playback-positions within other directories
+   void        ClearAdditionalPlaybackPos();
+   void        AddAdditionalPlaybackPos(const std::string& txtPath, double dTime);
+   int         GetNofAdditionalPlaybackPos();
+   std::string GetAdditionalPlaybackPath(int nIdx);
+   double      GetAdditionalPlaybackTime(int nIdx); // in seconds
+
 private:
    class PrivateData;
    std::unique_ptr<PrivateData> m_pPriv;

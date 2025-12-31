@@ -23,13 +23,32 @@
 #include "PersistentStorage.h"
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 
+// the standard-data-record is stored three times in order to detect SD-card problems
+//  0x000.0x3FF   first  copy of standard-data-record 
+//  0x400.0x7FF   second copy of standard-data-record 
+//  0x800.0xBFF   third  copy of standard-data-record 
+
+// --- standard-data-record ---
 // 0x000..0x003  0000..0003   04_char Storage-Number
 // 0x00A..0x00D  0010..0012   03_char Volume
-// 0x014..0x02D  0020..0045   25_char time-pos in seconds
-// 0x032..0x288  0050..0699  650_char file-path
-// 0x3E8..0x3EF  1000..1007    8_char CheckSum
+// 0x014..0x02D  0020..0045   25_char time-pos in seconds float "12345678.123456"
+// 0x032..0x2BB  0050..0699  650_char file-path
+// 0x2C0..0x2C3  0704..0707    4_char number of additional-records (playback-pos of other directories)
+// 0x3E8..0x3EF  1000..1007    8_char CheckSum [0x000..0x3E7]
+
+
+// 0xC00...  after the three copies of standard-data-records
+// some extra playback positions of other directories can be stored
+// --- additional directory playback data-record ---
+// 0x000..0x1EF              496_char file-path followed by spaces
+// 0x1F0                       1_char space
+// 0x1F1                       1_char '\n'
+// 0x1F2..0x1F9                8_char time-pos in seconds (integer "12345678")
+// 0x1FA                       1_char '\n'
+// 0x1FB..0x1FF                5_char spaces
 
 // ============================================================================
 class PersistentStorage::PrivateData
@@ -46,28 +65,41 @@ public:
    bool        m_bDataModified = false;
    int         m_nMaxStorageNumber = -1;
 
-
-   std::string m_txtPlaybackPath;
-   double      m_dPlaybackPos = 0.0; // seconds
-   int         m_nVolume = 70;       // 0 .. 100%
+   int         m_nFileRecordIndex = -1; // identifies the source-file of read data
+   std::string m_txtPlaybackPath;       // path to last played mp3
+   double      m_dPlaybackPos = 0.0;    // seconds
+   int         m_nVolume = 70;          // 0 .. 100%
 
    bool        m_bChecksumProblem = false;
 
-   static const int  RECORD_SIZE = 4096*1024;    // 4MB per file
-   static const int  DATA_SIZE   = 1024;         // size of stored data (3 copies in one file)
-   static const int  NOF_RECORDS = 100;          // 100 files
+   // first: loop over all files and read only first 3kB of each file - later read the additional pos of only one persistance-file
+   int                       m_nNofAdditionalPosInFile = 0;  // read from the first 3kB
+   std::vector<std::string>  m_listAdditionalPath;  // file-path: playback-pos of other directories
+   std::vector<int>          m_listAdditionalTime;  // seconds:   playback-pos of other directories
 
-   int m_arrStorageNumber[NOF_RECORDS];
+   static const int  RECORD_SIZE   = 4096*1024;    // 4MB per file
+   static const int  DATA_SIZE     = 1024;         // size of one standard-data-record (3 copies in one file)
+   static const int  NOF_RECORDS   = 100;          // 100 files
+   static const int  ADD_DATA_SIZE = 512;          // size of one additional playback-position data-record
+   static const int  MAX_NOF_ADDITIONAL = 100;     // maximal number of stored playback-positions in other directories
+
+   // e.g. m_arrStorageNumber[55] contains storage number of 055PersistStorage.bin   (1..9999)
+   int m_arrStorageNumber[NOF_RECORDS];     // storage-number found in storage-files   -1: not allocated
 
    std::string GetStorageFilePath(int nRecordIdx);
-   void ReadFiles();
+   void InvalidateData();
    bool WriteFile();
+   void ReadFiles();
+   void ReadAdditionalPlaybackPos();
    void EnsureFilesExist();
 
    int  CalcFreeRecordIdx();
    void PrepareData(unsigned char* buffer);
    void DecodeData(int nRecordIdx, unsigned char* buffer);
    int  CalcChecksum(const unsigned char* buffer);
+   void PrepareAdditionalPos(unsigned char* buffer, int iAddIdx);
+   void DecodeAdditionalPos(unsigned char* buffer);
+   int  GetNofAdditionalPlaybackPos();
 };
 
 // ----------------------------------------------------------------------------
@@ -216,9 +248,9 @@ void PersistentStorage::PrivateData::DecodeData(int nRecordIdx, unsigned char* b
    // --- path ---
    std::string txtPath;
    {
-      char bufferText[702] = {};
+      char bufferText[652] = {};
       bool bStarted = false;
-      for (int i =699; i >= 0; i--)
+      for (int i =649; i >= 0; i--)
       {
          bStarted = bStarted || buffer[i+50] != ' ';
          if (bStarted)
@@ -227,6 +259,23 @@ void PersistentStorage::PrivateData::DecodeData(int nRecordIdx, unsigned char* b
          }
       }
       txtPath = bufferText;
+   }
+
+   // --- number of additional positions in other directories ---
+   int nNofAdditionalPos = 0;
+   try
+   {
+      char bufferNumber[5] = {};
+      for (int i = 0; i < 4; i++)
+         bufferNumber[i] = buffer[i+704];
+      int nMaxNofAdditional = MAX_NOF_ADDITIONAL;
+      nNofAdditionalPos = std::stoi(bufferNumber);
+      nNofAdditionalPos = std::max(nNofAdditionalPos, 0);
+      nNofAdditionalPos = std::min(nNofAdditionalPos, nMaxNofAdditional);
+   }
+   catch(...)
+   {
+      nNofAdditionalPos = 0;
    }
 
    if (nCalculatedCheckSum != nStoredCheckSum && nStorageNumber >= 0)
@@ -252,10 +301,47 @@ void PersistentStorage::PrivateData::DecodeData(int nRecordIdx, unsigned char* b
       }
       if (m_nMaxStorageNumber == nStorageNumber)
       {
-         m_txtPlaybackPath = txtPath;
-         m_dPlaybackPos    = dPosition;
-         m_nVolume         = nVolume;
+         m_nFileRecordIndex        = nRecordIdx;
+         m_txtPlaybackPath         = txtPath;
+         m_dPlaybackPos            = dPosition;
+         m_nVolume                 = nVolume;
+         m_nNofAdditionalPosInFile = nNofAdditionalPos;
       }
+   }
+}
+
+// ----------------------------------------------------------------------------
+void PersistentStorage::PrivateData::DecodeAdditionalPos(unsigned char* buffer)
+{
+   // --- path ---
+   char bufferText[500] = {};
+   bool bStarted = false;
+   for (int i = 495; i >= 0; i--)
+   {
+      bStarted = bStarted || buffer[i] != ' ';
+      if (bStarted)
+      {
+         bufferText[i] = buffer[i];
+      }
+   }
+   if (bufferText[0])
+   {
+      m_listAdditionalPath.push_back( bufferText );
+
+      // --- time ---
+      int nAdditionalTime = 0;
+      try
+      {
+         char bufferNumber[10] = {};
+         for (int i = 0; i < 8; i++)
+            bufferNumber[i] = buffer[i+0x1F2];
+         nAdditionalTime = std::stoi(bufferNumber);
+      }
+      catch(...)
+      {
+         nAdditionalTime = 0;
+      }
+      m_listAdditionalTime.push_back( nAdditionalTime );
    }
 }
 
@@ -297,13 +383,19 @@ void PersistentStorage::PrivateData::PrepareData(unsigned char* buffer)
    }
    // --- path ---
    int nLengthPath = m_txtPlaybackPath.length();
-   if (nLengthPath > 0 && nLengthPath < 700)
+   if (nLengthPath > 0 && nLengthPath < 650)
    {
       for (int i = 0 ; i < nLengthPath; i++)
       {
          buffer[i+50] = m_txtPlaybackPath.at(i);
       }
    }
+   // -- number of additional playback positions --
+   sprintf(&txtTemp[50], "%04i", GetNofAdditionalPlaybackPos());
+   for (int i = 50; i < 54; i++)
+   {
+      buffer[i+654] = txtTemp[i]; // 704..707
+   } 
    // --- replace null-bytes by spaces ---
    for (int i = 0; i < 1000; i++)
    {
@@ -311,11 +403,41 @@ void PersistentStorage::PrivateData::PrepareData(unsigned char* buffer)
    }
    // --- checksum ---
    int ChkSum = CalcChecksum(buffer);
-   sprintf(&txtTemp[50], "%08i", ChkSum);
-   for (int i = 50; i < 58; i++)
+   sprintf(&txtTemp[60], "%08i", ChkSum);
+   for (int i = 60; i < 68; i++)
    {
-      buffer[i+950] = txtTemp[i];
+      buffer[i+940] = txtTemp[i]; // 1000..1007
    }
+}
+
+// ----------------------------------------------------------------------------
+// prepare additional directory playback data-record
+void PersistentStorage::PrivateData::PrepareAdditionalPos(unsigned char* buffer, int iAddIdx)
+{
+   for (int i = 0; i < ADD_DATA_SIZE; i++) buffer[i] = ' ';
+   if (iAddIdx >= 0 && iAddIdx < GetNofAdditionalPlaybackPos())
+   {
+      int nLengthPath = m_listAdditionalPath[iAddIdx].length();
+      if (nLengthPath > 0 && nLengthPath <= 496)
+      {
+         for (int i = 0 ; i < nLengthPath; i++)
+         {
+            buffer[i] = m_listAdditionalPath[iAddIdx].at(i);
+         }
+         int nAddTime = m_listAdditionalTime[iAddIdx];
+         nAddTime = std::max(nAddTime, 0);
+         nAddTime = std::min(nAddTime, 99999999);
+         
+         sprintf((char*)(&buffer[0x1F2]), "%08i", nAddTime);
+      }
+   }
+   // --- replace null-bytes by spaces ---
+   for (int i = 0; i < ADD_DATA_SIZE; i++)
+   {
+      buffer[i] = (buffer[i] != 0)? buffer[i] : ' ';
+   }
+   buffer[0x1F1] = '\n';
+   buffer[0x1FA] = '\n';
 }
 
 // ----------------------------------------------------------------------------
@@ -367,10 +489,40 @@ std::string  PersistentStorage::PrivateData::GetStorageFilePath(int nRecordIdx)
 }
 
 // ----------------------------------------------------------------------------
+
+void PersistentStorage::PrivateData::ReadAdditionalPlaybackPos()
+{
+   if (m_nFileRecordIndex >= 0 && m_nNofAdditionalPosInFile > 0)
+   {
+      std::string txtFilePath = GetStorageFilePath(m_nFileRecordIndex);
+      std::FILE* pFile = std::fopen(txtFilePath.c_str(), "rb");
+      if (pFile)
+      {
+         int nSeekResult = std::fseek(pFile, 3*DATA_SIZE, SEEK_SET);
+
+         if (nSeekResult == 0)
+         {
+            for (int nAddIdx = 0; nAddIdx < m_nNofAdditionalPosInFile; nAddIdx++)
+            {
+               unsigned char buffer[ADD_DATA_SIZE] = {};
+               if (std::fread(buffer, ADD_DATA_SIZE, 1 , pFile) > 0)
+               {
+                  DecodeAdditionalPos(buffer);
+               }
+            }
+         }
+      }
+      fclose (pFile);
+   }
+   m_nNofAdditionalPosInFile = m_listAdditionalPath.size();
+}
+
+// ----------------------------------------------------------------------------
 // read all 100 files and search for the one with the maximum storage-number
 void PersistentStorage::PrivateData::ReadFiles()
 {
    m_bDataModified = false;
+   InvalidateData();
 
    for (int nRecordIdx = 0; nRecordIdx < NOF_RECORDS; nRecordIdx++)
    {
@@ -379,7 +531,6 @@ void PersistentStorage::PrivateData::ReadFiles()
 
       if (pFile)
       {
-
          unsigned char buffer1[DATA_SIZE] = {};
          unsigned char buffer2[DATA_SIZE] = {};
          unsigned char buffer3[DATA_SIZE] = {};
@@ -408,6 +559,7 @@ void PersistentStorage::PrivateData::ReadFiles()
          std::fclose(pFile);
       }
    }
+   ReadAdditionalPlaybackPos();
 }
 
 // ----------------------------------------------------------------------------
@@ -419,7 +571,7 @@ bool PersistentStorage::PrivateData::WriteFile()
 
    int nFreeRecordIdx = CalcFreeRecordIdx();
 
-   printf("Persist: record:%i playback %s\n", nFreeRecordIdx, m_txtPlaybackPath.c_str());
+   // printf("Persist: record:%i playback %s\n", nFreeRecordIdx, m_txtPlaybackPath.c_str());
 
    if (m_bDataModified && nFreeRecordIdx >= 0)
    {
@@ -450,16 +602,33 @@ bool PersistentStorage::PrivateData::WriteFile()
       }
       if (pFile)
       {
-         unsigned char buffer[3*DATA_SIZE] = {};
-         std::memset(buffer, ' ', 3*DATA_SIZE);
-         PrepareData(buffer);
-         for (int iCpyIdx = 0; iCpyIdx < DATA_SIZE; iCpyIdx++)
+         // --- three copies of standard-data-record ---
          {
-            buffer[1*DATA_SIZE + iCpyIdx] = buffer[iCpyIdx];
-            buffer[2*DATA_SIZE + iCpyIdx] = buffer[iCpyIdx];
+            unsigned char buffer[3*DATA_SIZE] = {};
+            std::memset(buffer, ' ', 3*DATA_SIZE);
+            PrepareData(buffer);
+            for (int iCpyIdx = 0; iCpyIdx < DATA_SIZE; iCpyIdx++)
+            {
+               buffer[1*DATA_SIZE + iCpyIdx] = buffer[iCpyIdx];
+               buffer[2*DATA_SIZE + iCpyIdx] = buffer[iCpyIdx];
+            }
+            std::fwrite(buffer, 3*DATA_SIZE, 1, pFile);
+            std::fflush(pFile);
          }
-         std::fwrite(buffer, 3*DATA_SIZE, 1, pFile);
-         std::fflush(pFile);
+
+         // --- additional playback positions of other directories ---
+         {
+            int nNofAdditionalPos = GetNofAdditionalPlaybackPos();
+            for (int iAddIdx = 0; iAddIdx < nNofAdditionalPos; iAddIdx++)
+            {
+               unsigned char buffer[ADD_DATA_SIZE] = {};
+               PrepareAdditionalPos(buffer, iAddIdx);
+               std::fwrite(buffer, ADD_DATA_SIZE, 1, pFile);
+            }
+            std::fflush(pFile);
+         }
+
+         // --- clean up ---
          std::fclose(pFile);
          bSuccess = true;
          m_arrStorageNumber[nFreeRecordIdx] = m_nMaxStorageNumber;
@@ -478,6 +647,33 @@ bool PersistentStorage::PrivateData::WriteFile()
    return bSuccess;
 }
 
+// ----------------------------------------------------------------------------
+
+void PersistentStorage::PrivateData::InvalidateData()
+{
+   m_bDataModified     = false;
+   m_bChecksumProblem  = false;
+   m_nMaxStorageNumber = -1;
+   m_nFileRecordIndex  = -1;
+   m_dPlaybackPos      = 0.0;
+   m_nVolume           = 70;
+   m_txtPlaybackPath.clear();
+   m_nNofAdditionalPosInFile = 0;
+   m_listAdditionalPath.clear();
+   m_listAdditionalTime.clear();
+} 
+
+// ----------------------------------------------------------------------------
+
+int PersistentStorage::PrivateData::GetNofAdditionalPlaybackPos()
+{
+   int nListSizePath = m_listAdditionalPath.size();
+   int nListSizeTime = m_listAdditionalTime.size();
+   int nNofAddPos = MAX_NOF_ADDITIONAL;
+   nNofAddPos = std::min(nNofAddPos, nListSizePath);
+   nNofAddPos = std::min(nNofAddPos, nListSizeTime);
+   return nNofAddPos;
+}
 
 // ============================================================================
 
@@ -538,9 +734,66 @@ double      PersistentStorage::GetPlaybackTime()  // seconds
 
 // ----------------------------------------------------------------------------
 
-void  PersistentStorage::SetPlayback(std::string txtPath, double dTime)
+void  PersistentStorage::SetPlayback(const std::string& txtPath, double dTime)
 {
    m_pPriv->m_txtPlaybackPath = txtPath;
    m_pPriv->m_dPlaybackPos    = dTime;   // seconds
    m_pPriv->m_bDataModified   = true;
 }
+
+// ----------------------------------------------------------------------------
+
+void PersistentStorage::ClearAdditionalPlaybackPos()
+{
+   m_pPriv->m_listAdditionalPath.clear();
+   m_pPriv->m_listAdditionalTime.clear();
+   m_pPriv->m_nNofAdditionalPosInFile = 0;
+}
+
+// ----------------------------------------------------------------------------
+
+void PersistentStorage::AddAdditionalPlaybackPos(const std::string& txtPath, double dTime)
+{
+   if (m_pPriv->GetNofAdditionalPlaybackPos() < PrivateData::MAX_NOF_ADDITIONAL)
+   {
+      int nLengthPath = txtPath.length();
+      if (nLengthPath > 0 && nLengthPath < 496)
+      {
+         m_pPriv->m_listAdditionalPath.push_back(txtPath);
+         m_pPriv->m_listAdditionalTime.push_back((int)(dTime));
+         m_pPriv->m_bDataModified   = true;
+      }
+   }
+}
+
+// ----------------------------------------------------------------------------
+
+int PersistentStorage::GetNofAdditionalPlaybackPos()
+{
+   return m_pPriv->GetNofAdditionalPlaybackPos();
+}
+
+// ----------------------------------------------------------------------------
+
+std::string PersistentStorage::GetAdditionalPlaybackPath(int nIdx)
+{
+   std::string txtAddPath;
+   if (nIdx >= 0 && nIdx < GetNofAdditionalPlaybackPos())
+   {
+      txtAddPath = m_pPriv->m_listAdditionalPath[nIdx];
+   }
+   return txtAddPath;
+}
+
+// ----------------------------------------------------------------------------
+
+double PersistentStorage::GetAdditionalPlaybackTime(int nIdx)
+{
+   double dAddTime;
+   if (nIdx >= 0 && nIdx < GetNofAdditionalPlaybackPos())
+   {
+      dAddTime = m_pPriv->m_listAdditionalTime[nIdx];
+   }
+   return dAddTime;
+}
+

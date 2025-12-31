@@ -27,6 +27,9 @@ public:
    void SetNextDir();
    void SetPrevDir();
 
+   // extract additional playback-positions for persistence-file
+   int GetNofDirectories();
+   PlaybackInfo GetPlaybackOfDirectory(int nDirIndex);
 
 private:
    class PrivateData;

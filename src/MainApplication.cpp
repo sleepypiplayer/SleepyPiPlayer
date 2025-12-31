@@ -81,6 +81,12 @@ int main(int argc, char* argv[])
          printf("Persistence volume: %i   pos:%0.1fsec  file:%s\n\r", storage.GetVolume(),
                storage.GetPlaybackTime(), storage.GetPlaybackPath().c_str());
          Mp3DirFileList  Mp3List(config.GetMp3Path());
+         for (int nDirIdx = 0; nDirIdx < storage.GetNofAdditionalPlaybackPos(); nDirIdx++)
+         {
+            std::string txtPath = storage.GetAdditionalPlaybackPath(nDirIdx);
+            double      dTime   = storage.GetAdditionalPlaybackTime(nDirIdx);
+            Mp3List.SetPlaybackPosFromStorage(txtPath, dTime);
+         }
          Mp3List.SetPlaybackPosFromStorage(storage.GetPlaybackPath(), storage.GetPlaybackTime());
 
          std::chrono::milliseconds durationSleep{15};
@@ -115,6 +121,12 @@ int main(int argc, char* argv[])
             {
                storage.SetPlayback(CurrentPlayback.GetFilePath(), CurrentPlayback.GetPlaybackPos() );
                storage.SetVolume(player.GetVolumeInPct());
+               storage.ClearAdditionalPlaybackPos();
+               for (int nDirIdx = 0; nDirIdx < Mp3List.GetNofDirectories(); nDirIdx++)
+               {
+                  PlaybackInfo info = Mp3List.GetPlaybackOfDirectory(nDirIdx);
+                  storage.AddAdditionalPlaybackPos(info.GetFilePath(), info.GetPlaybackPos());
+               }
                storage.WriteFile();
             }
          }

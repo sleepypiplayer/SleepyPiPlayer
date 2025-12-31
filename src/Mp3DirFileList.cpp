@@ -459,3 +459,24 @@ void Mp3DirFileList::SetPrevDir()
       m_pPriv->m_nIdxCurrentDir = (m_pPriv->m_nIdxCurrentDir + nVecDirSize - 1) % nVecDirSize;
    }
 }
+
+// -----------------------------------------------------------------------------
+
+int Mp3DirFileList::GetNofDirectories()
+{
+   return m_pPriv->m_vecDirectory.size();
+}
+
+// -----------------------------------------------------------------------------
+
+PlaybackInfo Mp3DirFileList::GetPlaybackOfDirectory(int nDirIndex)
+{
+   PlaybackInfo info;
+   int nVecDirSize = m_pPriv->m_vecDirectory.size();
+   if (nVecDirSize > 0 && nDirIndex >= 0 && nDirIndex < nVecDirSize)
+   {
+      info = m_pPriv->m_vecDirectory[nDirIndex].GetCurrentFile();
+   }
+   return info;
+}
+
