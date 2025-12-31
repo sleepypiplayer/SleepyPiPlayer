@@ -285,7 +285,7 @@ std::string SystemSoundCatalog::GetChar(char txtCharacter)
 void SystemSoundCatalog::SpellString(std::list<std::string>& listOutput, std::string txtInput)
 {
    int nLength = txtInput.length();
-   if (nLength <= 24)
+   if (nLength <= 32)
    {
       for (int i = 0; i < nLength; i++)
       {
@@ -294,14 +294,14 @@ void SystemSoundCatalog::SpellString(std::list<std::string>& listOutput, std::st
    }
    else
    {
-      for (int i = 0; i < 11 && i < nLength; i++)
+      for (int i = 0; i < 12 && i < nLength; i++)
       {
          listOutput.push_back(GetChar(txtInput.at(i)));
       }
       listOutput.push_back(GetChar('.'));
       listOutput.push_back(GetChar('.'));
       listOutput.push_back(GetChar('.'));
-      for (int i = nLength-11; i < nLength; i++)
+      for (int i = nLength-19; i < nLength; i++)
       {
          listOutput.push_back(GetChar(txtInput.at(i)));
       }
