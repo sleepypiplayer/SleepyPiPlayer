@@ -62,8 +62,8 @@ public:
 
    void AddUserRequest(KeyInput::KEY  key);
 
-   const int   SAMPLE_BUFFER_SIZE = 16000;
-   const long  SAMPLE_RATE        = 32000;
+   const int   SAMPLE_BUFFER_SIZE = 22050;     // 22050  or 16000
+   const long  SAMPLE_RATE        = 44100;     // 44100  or 32000
    const int   CHANNELS           = MPG123_MONO;
    const int   ENCODING           = MPG123_ENC_SIGNED_16;
 
