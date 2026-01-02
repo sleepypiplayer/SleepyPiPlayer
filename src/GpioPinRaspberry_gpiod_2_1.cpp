@@ -36,7 +36,7 @@ public:
 
 GpioPinRaspberry::PrivateData::PrivateData()
 {
-   m_pGpioChip = gpiod_chip_open("gpiochip0");
+   m_pGpioChip = gpiod_chip_open("/dev/gpiochip0");
    if (m_pGpioChip == nullptr)
    {
       m_bGpioProblem = true;
@@ -85,20 +85,30 @@ void GpioPinRaspberry::PrivateData::ConfigureInput(int nGpioNumber, bool bInitPu
       ReleaseSysClassGpio(nGpioNumber);
       ReleaseSysClassGpio(nGpioNumber+512);  // https://github.com/raspberrypi/linux/issues/6037
 
-      struct gpiod_line_settings*  pGpioSettingDirection =  gpiod_line_settings_new();
-      struct gpiod_line_settings*  pGpioSettingPullUp    =  gpiod_line_settings_new();
-      struct gpiod_line_config *   pGpioLineCfg          =  gpiod_line_config_new();
-      struct gpiod_request_config* pReqConfig            =  gpiod_request_config_new();
+      struct gpiod_line_settings*  pGpioSetting  =  gpiod_line_settings_new();
+      struct gpiod_line_config *   pGpioLineCfg  =  gpiod_line_config_new();
+      struct gpiod_request_config* pReqConfig    =  gpiod_request_config_new();
 
-      if (pGpioSettingDirection == nullptr || pGpioSettingPullUp == nullptr ||
-          pGpioLineCfg == nullptr          || pReqConfig         == nullptr  )
+      if (pGpioSetting == nullptr || pGpioLineCfg == nullptr || pReqConfig == nullptr)
       {
          m_bGpioProblem = true;
       }
       else
       {
-         gpiod_line_settings_set_direction(pGpioSettingDirection, GPIOD_LINE_DIRECTION_INPUT);
-         int ret = gpiod_line_config_add_line_settings(pGpioLineCfg, (uint32_t*)(&nGpioNumber), 1, pGpioSettingDirection);
+         int ret = gpiod_line_settings_set_direction(pGpioSetting, GPIOD_LINE_DIRECTION_INPUT);
+         if (ret != 0)
+         {
+            m_bGpioProblem = true;
+         }
+         if (bInitPullUp)
+         {
+            ret = gpiod_line_settings_set_bias(pGpioSetting, GPIOD_LINE_BIAS_PULL_UP);
+            if (ret != 0)
+            {
+               m_bGpioProblem = true;
+            }
+         }
+         ret = gpiod_line_config_add_line_settings(pGpioLineCfg, (uint32_t*)(&nGpioNumber), 1, pGpioSetting);
          if (ret != 0)
          {
             m_bGpioProblem = true;
@@ -106,22 +116,6 @@ void GpioPinRaspberry::PrivateData::ConfigureInput(int nGpioNumber, bool bInitPu
 
          gpiod_request_config_set_consumer(pReqConfig, "sleepy");
 
-         if (bInitPullUp)
-         {
-            ret = gpiod_line_settings_set_bias(pGpioSettingPullUp, GPIOD_LINE_BIAS_PULL_UP);
-            if (ret != 0)
-            {
-                m_bGpioProblem = true;
-            }
-            else
-            {
-               ret = gpiod_line_config_add_line_settings(pGpioLineCfg, (uint32_t*)(&nGpioNumber), 1, pGpioSettingPullUp);
-            }
-            if (ret != 0)
-            {
-               m_bGpioProblem = true;
-            }
-         }
          struct gpiod_line_request* pGpioRequest = nullptr;
          pGpioRequest = gpiod_chip_request_lines(m_pGpioChip, pReqConfig, pGpioLineCfg);
          if (pGpioRequest == nullptr)
@@ -135,15 +129,10 @@ void GpioPinRaspberry::PrivateData::ConfigureInput(int nGpioNumber, bool bInitPu
       }
 
       // clean-up
-      if (pGpioSettingDirection)
+      if (pGpioSetting)
       {
-         gpiod_line_settings_free(pGpioSettingDirection);
-         pGpioSettingDirection = nullptr;
-      }
-      if (pGpioSettingDirection)
-      {
-         gpiod_line_settings_free(pGpioSettingPullUp);
-         pGpioSettingPullUp = nullptr;
+         gpiod_line_settings_free(pGpioSetting);
+         pGpioSetting = nullptr;
       }
       if (pGpioLineCfg)
       {
