@@ -1,0 +1,25 @@
+#! /bin/sh
+
+# replaces original ONOFF-SHIM software
+# (https://github.com/pimoroni/clean-shutdown)
+# (sudo curl https://get.pimoroni.com/onoffshim | bash)
+
+# cp misc/onoff-shim /usr/lib/systemd/system-shutdown/onoff-shim
+# chmod 755 /usr/lib/systemd/system-shutdown/onoff-shim
+
+# see:  pinctrl help
+
+
+case "$1" in
+  poweroff)
+    pinctrl set 4 ip pd
+    /bin/sleep 0.5
+    pinctrl set 4 ip pu
+    ;;
+  halt)
+    pinctrl set 4 ip pd
+    /bin/sleep 0.5
+    pinctrl set 4 ip pu
+    ;;
+esac
+

@@ -140,11 +140,7 @@ int main(int argc, char* argv[])
          {
             printf("#= Service Mode\n");
             std::system("sudo rfkill unblock wifi");
-            std::system("sudo systemctl restart wpa_supplicant");
-            std::system("sudo systemctl restart ifup@wlan0");
             std::system("sudo systemctl restart networking");
-            std::system("sudo systemctl restart NetworkManager");
-            std::system("sudo systemctl restart systemd-timesyncd");
 
             std::chrono::time_point<std::chrono::steady_clock> timeStart = std::chrono::steady_clock::now();
             std::chrono::time_point<std::chrono::steady_clock> timeNow   = std::chrono::steady_clock::now();
@@ -187,6 +183,7 @@ int main(int argc, char* argv[])
          }
       }
    }
+   return 0;
 }
 
 

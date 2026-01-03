@@ -107,71 +107,38 @@ service-mode - replace MP3-files on raspberry
 =======================================================
 =======================================================
  STEP BY STEP instructions to prepare SD-card
- (working 2024-12-20)
+ (working 2025-12-30)
 =======================================================
 =======================================================
+
+prepare SD-card on a LINUX-PC
 
 Use DietPi:
 It boots 5 seconds faster than regular Raspberry Pi OS.
 
 Download image from https://dietpi.com
 Raspberry Pi 2/3/4/Zero 2   BCM2710/2711 900-1800 MHz | 4 Cores | ARMv8
-xz -d DietPi_RPi-ARMv8-Bookworm.img.xz
-sd-card  linux-mint:   mintstick -m iso
+xz -d DietPi_RPi234-ARMv8-Trixie.img.xz
+sd-card  linux-mint:   sudo mintstick -m iso
 
-lsblk
-sudo umount /dev/sdd1
-sudo umount /dev/sdd2
-sudo fatlabel /dev/sdd1 BOOT
-sudo e2label  /dev/sdd2 root
-
-mount sdd1=(BOOT)  and  sdd2=(ROOT)
-
-sudo mkdir /media/xxx/root/SLEEPY_FW
-sudo mkdir /media/xxx/root/SLEEPY_SAVE
-sudo mkdir /media/xxx/root/SLEEPY_MP3
-
-Edit some settings on the SD-Card
-
-nano /media/xxx/BOOT/dietpi.txt
-  AUTO_SETUP_KEYBOARD_LAYOUT=?? e.g. "de"
-  AUTO_SETUP_NET_ETHERNET_ENABLED=0
-  AUTO_SETUP_NET_WIFI_ENABLED=1
-  AUTO_SETUP_NET_WIFI_COUNTRY_CODE=?? e.g. "DE"
-
-nano /media/xxx/BOOT/dietpi-wifi.txt
-  aWIFI_SSID[0]='my_wifi'
-  aWIFI_KEY[0]='my_passwd'
-  aWIFI_KEYMGR[0]='WPA-PSK'
-
-sudo nano /media/xxx/root/etc/fstab
-  change size of /tmp to 7M
-    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
-  change size of /var to 5M
-    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
-  add new partitions  (replace xxxxxxxx: see partition.1)
-    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime                 0    2
-    PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
-    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime                 0    2
-
-
--------------------------------------------------------
-
-Before inserting the SD-card into the raspberry,
-create some additional partitions by using "GParted".
-- shutdown your PC after writing the OperatingSystem
+create some additional partitions on your linux-PC by using "GParted".
+-- see misc/gparted.png
+- shutdown your PC
 - remove the SD-card
 - reboot   your PC before using GParted
 - insert the SD-card
-- umount SD-card   "umount /dev/sde1" / "umount /dev/sde2"
+- lsblk  # check device-name
+- umount SD-card  e.g. "umount /dev/sdc1" / "umount /dev/sdc2"
 - start gparted as root
 - select your SD-card in gparted (do not edit your hard-drive)
-- change size of partition.2 "rootfs" to 2560 MiB
-- create partition.3 with size 512 MiB (primary / ext.4)        "SLEEPY_FW"
-- create partition.4 "extended partition" remaining disk size
-- create partition.5 with size 512 MiB (logic / fat32)          "SLEEPY_SAVE"
-- create partition.6 with remaining disk size (logic / ext.4)   "SLEEPY_MP3"
--> write the changes to disk (toolbar - arrow-symbol)
+- change name of partition.1 to "SLEEPY_BOOT"  # e.g. /dev/sdc1  context-menu "Label File System"
+- change name of partition.2 to "SLEEPY_root"  # e.g. /dev/sdc2  context-menu "Label File System"
+- change size of partition.2 "SLEEPY_root" to 2944 MiB  # e.g. /dev/sdc2  context-menu "resize"
+- create partition.3 with size 256 MiB (primary / ext.4)        "SLEEPY_FW"   # "unallocated"-context-menu: "new"
+- create partition.4 "extended partition" remaining disk size                 # "unallocated"-context-menu: "new"
+- create partition.5 with size 512 MiB (logic / fat32)          "SLEEPY_SAVE" # "unallocated"-context-menu: "new"
+- create partition.6 with remaining disk size (logic / ext.4)   "SLEEPY_MP3"  # "unallocated"-context-menu: "new"
+-> write the changes to disk (toolbar - arrow/check-symbol)
 -> close gparted
 
 (Partition 1 and 2 are already created by the dietpi-image.)
@@ -182,29 +149,39 @@ partition.4 extended partition remaining disk size
 partition.5 Fat32  512M  save/storage.bin                /SLEEPY_SAVE
 partition.6 ext4  ????M  mp3                             /SLEEPY_MP3
 
------
+mount sdc1=(SLEEPY_BOOT)  and  sdc2=(SLEEPY_root)
 
-create the directories on linux-PC or on raspberry
+sudo mkdir /media/xxx/SLEEPY_root/SLEEPY_FW
+sudo mkdir /media/xxx/SLEEPY_root/SLEEPY_SAVE
+sudo mkdir /media/xxx/SLEEPY_root/SLEEPY_MP3
 
-mkdir     /SLEEPY_FW/sleepy
-chmod 777 /SLEEPY_FW/sleepy
+Edit some settings on the SD-Card
 
-mkdir     /SLEEPY_MP3/mp3
-chmod 777 /SLEEPY_MP3/mp3
+sudo nano /media/xxx/SLEEPY_root/etc/fstab
+  change size of /tmp to 7M
+    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
+  change size of /var/log to 5M
+    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
+  add new partitions  (replace xxxxxxxx: see already existing partition.1)
+    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime                 0    2
+    PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
+    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime                 0    2
 
-mkdir /SLEEPY_SAVE/save
+nano /media/xxx/SLEEPY_BOOT/dietpi-wifi.txt
+  aWIFI_SSID[0]='my_wifi'
+  aWIFI_KEY[0]='my_passwd'
+  aWIFI_KEYMGR[0]='WPA-PSK'
 
-copy files to /SLEEPY_FW/sleepy/SysMP3
-copy files to /SLEEPY_FW/sleepy/Documentation
-copy files to /SLEEPY_FW/sleepy/src
-copy files to /SLEEPY_MP3/mp3/audiobook1
-copy files to /SLEEPY_MP3/mp3/audiobook2
-copy files to /SLEEPY_MP3/mp3/audiobook3
-
-SLEEPY_FW/sleepy$  ln -s /src/sleepy     sleepy
-SLEEPY_FW/sleepy$  ln -s /src/sleepy.cfg sleepy.cfg
+nano /media/xxx/SLEEPY_BOOT/dietpi.txt
+  AUTO_SETUP_KEYBOARD_LAYOUT=?? e.g. "de"
+  AUTO_SETUP_NET_ETHERNET_ENABLED=0
+  AUTO_SETUP_NET_WIFI_ENABLED=1
+  AUTO_SETUP_NET_WIFI_COUNTRY_CODE=?? e.g. "DE"
 
 
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
 *--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
 
 insert the SD-card into the raspberry and login via SSH
@@ -212,10 +189,15 @@ insert the SD-card into the raspberry and login via SSH
 (password: "dietpi")
 ssh root@192.168.1.123
 
+Think of a dietpi root-password and write it down on the inside of the device lid.
+The password does not need to be that secure, 
+because the network-connection is normally switched off.
+
 -----
 
 # by the way: central config tool: dietpi-launcher
 you are now in dietpi-sortware   ESC=back
+(see misc/dietpi-software.png)
   survey: no  ("opt out")
   password: set the same password to all entities
   UART: disable <yes>
@@ -226,7 +208,9 @@ you are now in dietpi-sortware   ESC=back
       "LED Control"
         "ACT"
           -> set "none"
-        "PWR"
+        "default-on"
+          -> set "none"
+        "mmc0"
           -> set "none"
     "Audio Options"
       "Enable: install ALSA"
@@ -239,6 +223,32 @@ you are now in dietpi-sortware   ESC=back
   -> "Log System"  keep      "DeitPi-RAMlog#1"
   -> "Install"     select "OK"
 
+-----
+
+create the directories on raspberry
+
+mkdir     /SLEEPY_FW/sleepy
+chmod 777 /SLEEPY_FW/sleepy
+
+mkdir     /SLEEPY_MP3/mp3
+chmod 777 /SLEEPY_MP3/mp3
+
+mkdir /SLEEPY_SAVE/save
+
+-----
+
+add user dietpi to group gpio: allow setting input-output-pins
+
+sudo usermod -aG gpio dietpi
+
+-----
+
+add user dietpi to group audio: allow access to alsa-sound
+
+sudo usermod -aG audio dietpi
+
+-----
+
 sudo reboot
 
 -----
@@ -248,38 +258,42 @@ ssh dietpi@192.168.1.123
   sudo apt-get upgrade
   sudo reboot
 
--------------------------------------------------------
+-----
 
-sudo nano /etc/fstab
-  change size of /tmp to 7M
-    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
-  change size of /var/log to 5MB
-    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
-
--------------------------------------------------------
-
-install  ON-OFF-SHIM  software
+remove swap-file: we try to avoid writing to the SD-card
+(It was added by the dietpi-software in the meanwhile.)
 
 ssh dietpi@192.168.1.123
-sudo curl https://get.pimoroni.com/onoffshim | bash
--> reboot ->  "no"
+  sudo nano /etc/fstab
+  -> remove this line:  /var/swap none swap sw
+  sudo reboot
 
+ssh dietpi@192.168.1.123
+   sudo rm  /var/swap
 
-### problems with raspbery key-press-detection ??? ###
-  https://github.com/raspberrypi/linux/issues/6037
-    /sys/class/gpio  numbers have changed by 512
+------
 
-Also OnOff-shim is affected:
-    https://github.com/pimoroni/clean-shutdown
-    https://github.com/pimoroni/clean-shutdown/issues/37
+copy files from linux-PC  to raspberry
 
-Replace /sys/class/gpio/... with pinctrl
-  sudo nano /lib/systemd/system-shutdown/gpio-poweroff
-        #/bin/echo $poweroff_pin > /sys/class/gpio/export
-        #/bin/echo out > /sys/class/gpio/gpio$poweroff_pin/direction
-        #/bin/echo 0 > /sys/class/gpio/gpio$poweroff_pin/value
-        pinctrl set $poweroff_pin ip pd
-        /bin/sleep 0.5
+scp -r SysMP3     dietpi@192.168.1.123:/SLEEPY_FW/sleepy
+scp -r src        dietpi@192.168.1.123:/SLEEPY_FW/sleepy
+scp -r misc       dietpi@192.168.1.123:/SLEEPY_FW/sleepy
+scp -r audiobook1 dietpi@192.168.1.123:/SLEEPY_MP3/mp3
+scp -r audiobook2 dietpi@192.168.1.123:/SLEEPY_MP3/mp3
+scp -r audiobook3 dietpi@192.168.1.123:/SLEEPY_MP3/mp3
+
+-------------------------------------------------------
+
+Make sure a shutdown will turn off power.
+
+Using original ON-OFF-SHIM software causes trouble.
+(https://github.com/pimoroni/clean-shutdown)
+Instead of original-package better just copy this script:
+
+ssh root@192.168.1.123
+   sudo mkdir /usr/lib/systemd/system-shutdown
+   sudo cp  /SLEEPY_FW/sleepy/misc/onoff-shim /usr/lib/systemd/system-shutdown
+   sudo chmod 755 /usr/lib/systemd/system-shutdown/onoff-shim
 
 -------------------------------------------------------
 
@@ -290,14 +304,14 @@ set microphone to 0 percent
 -----
 
 install some packages
-  sudo apt-get install libout123-0
-  sudo apt-get install libmpg123-dev
-  sudo apt-get install mpg123
-  sudo apt-get install libgpiod-dev
-  sudo apt-get install dbus
-  sudo apt-get install rfkill
-  sudo apt-get install g++
-  sudo apt-get install less
+  sudo apt-get --yes install libout123-0
+  sudo apt-get --yes install libmpg123-dev
+  sudo apt-get --yes install mpg123
+  sudo apt-get --yes install libgpiod-dev
+  sudo apt-get --yes install dbus
+  sudo apt-get --yes install rfkill
+  sudo apt-get --yes install less
+  sudo apt-get --yes install g++
 
 sudo systemctl unmask systemd-logind
 sudo systemctl start dbus systemd-logind
@@ -306,8 +320,17 @@ sudo systemctl start dbus systemd-logind
 
 compile the sourcecode on raspberry
   cd /SLEEPY_FW/sleepy/src
-  chmod 447 compile_raspi_gpiod_1_6
+  chmod 777 compile_raspi_gpiod_1_6
   ./compile_raspi_gpiod_1_6
+
+if executing compile_raspi_gpiod_1_6 causes errors: try gpiod_2_1
+  apt list --installed | grep gpiod
+  cd /SLEEPY_FW/sleepy/src
+  chmod 777 compile_raspi_gpiod_2_1
+  ./compile_raspi_gpiod_2_1
+
+/SLEEPY_FW/sleepy$  ln -s src/sleepy     sleepy
+/SLEEPY_FW/sleepy$  ln -s src/sleepy.cfg sleepy.cfg
 
 -----
 
@@ -318,7 +341,7 @@ DISABLE_WIFI should be OFF  as long as the system is not fully operational
 -------------------------------------------------------
 
 automatic startup of sleepy-firmware
-sudo cp sleepy.service /etc/systemd/system
+sudo cp /SLEEPY_FW/sleepy/src/sleepy.service /etc/systemd/system
 sudo systemctl enable sleepy
 
 check sleepy.cfg
@@ -328,8 +351,11 @@ reboot and make sure sleepy is executed and plays audio
 problems? you might have to edit /SLEEPY_FW/sleepy/src/sleepy.cfg
 sudo reboot
 
+If the raspi plays audio, press the onoff-button
+-> shutdown - poweroff should work now
+   (but writing the playback-position for the first time will take some time)
 
-*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
+*--*--*--* --*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
 
 check the boot-duration before changing to read-only-filesystem
    systemd-analyze critical-chain
@@ -338,25 +364,24 @@ check the boot-duration before changing to read-only-filesystem
    systemctl list-units
    systemctl list-dependencies networking
 
+perform boot-time optimization by turning off FileSystem-check
+(we will change to read-only file-system later)
 
-perform some boot-time optimizations by turning off network-services
-ATTENTION:  only try this if your system is fully operational
-If something goes wrong, you could be forced clear the SD-card
-and repeat all installation-steps so far.
+sudo nano /boot/cmdline.txt
+    replace "fsck.repair=yes" with "fsck.mode=skip"
 
-sudo systemctl disable ifup@wlan0
-sudo systemctl disable wpa_supplicant
-sudo systemctl disable networking
-sudo systemctl disable NetworkManager
-sudo systemctl disable bluetooth
-sudo systemctl disable systemd-rfkill
-sudo systemctl disable systemd-random-seed
-sudo systemctl disable systemd-timesyncd
+Disable WIFI in normal operation: save power
 
 nano /SLEEPY_FW/sleepy/src/sleepy.cfg
   DISABLE_WIFI ON
 
 -> from now on you need to start service-mode in order to use SSH
+
+---
+
+restart by using red onoff-button
+WIFI is off: you need the service-mode to use ssh
+
 
 *--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
 
@@ -377,10 +402,6 @@ additional changes are written to the SD-card.
 
 ADVICE: use industrial micro-SD-cards with SLC-Flash
 
-- disable filesystem-check: we will become read-only
-  sudo systemctl disable systemd-fsckd
-
-
 sudo nano /etc/fstab
 # /etc/fstab  --  mount root-file-system read-only
 # add option "ro" : read-only   to partition.1,  partition.2, partition.3 and partition.6
@@ -394,12 +415,16 @@ PARTUUID=59786d62-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro        
 
 ---
 
-check
+check the size of tmpfs again
 sudo nano /media/xxx/root/etc/fstab
   change size of /tmp to 7M
     tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
   change size of /var/log to 5M
     tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
+
+---
+
+sudo reboot
 
 ---
 
@@ -431,3 +456,22 @@ sudo reboot
 ----------------------------------------------------------
 
 sudo poweroff
+
+
+=======================================================
+=======================================================
+=======================================================
+Update MP3-Files on raspberry
+=======================================================
+=======================================================
+- turn on the raspberry-player
+- enter Service-Mode by long-press of blue + white + white
+- ssh dietpi@192.168.X.XXX
+  (Get the ip-address from your WIFI-router DHCP-server.)
+  (The password could be on the inside of the device lid.)
+  - sudo mount -o remount,rw /SLEEPY_MP3
+  - rm /SLEEPY_MP3/mp3/audiobook2
+- scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
+- leave Service-Mode by pressing onoff-button (red)
+
+
