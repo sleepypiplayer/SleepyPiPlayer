@@ -8,18 +8,35 @@
 # chmod 755 /usr/lib/systemd/system-shutdown/onoff-shim
 
 # see:  pinctrl help
+# Valid [options] for pinctrl set are:
+#  ip      set GPIO as input
+#  op      set GPIO as output
+#  a0-a8   set GPIO to alt function in the range 0 to 8 (range varies by model)
+#  no      set GPIO to no function (NONE)
+#  pu      set GPIO in-pad pull up
+#  pd      set GPIO in-pad pull down
+#  pn      set GPIO pull none (no pull)
+#  dh      set GPIO to drive high (1) level (only valid if set to be an output)
+#  dl      set GPIO to drive low (0) level (only valid if set to be an output)
+# example pinctrl set 4 op dl     # set gpio4 to output level=low
+
+
+# ATTENTION:
+# pinctrl set 4 ip pd  will also turn off power
+# but an immediate restart will not work, 
+# because the pull-down resistor remains active for many seconds
+# even after power-off
+
+
+#  pinctrl set 4 op dl # will turn off power immediately without delay
+#  /bin/sleep 0.5      # sleep for 500 milli-seconds
 
 
 case "$1" in
-  poweroff)
-    pinctrl set 4 ip pd
+  halt | poweroff)
     /bin/sleep 0.5
-    pinctrl set 4 ip pu
-    ;;
-  halt)
-    pinctrl set 4 ip pd
+    pinctrl set 4 op dl
     /bin/sleep 0.5
-    pinctrl set 4 ip pu
     ;;
 esac
 
