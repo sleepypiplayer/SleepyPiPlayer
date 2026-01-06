@@ -55,20 +55,22 @@ int main(int argc, char* argv[])
    {
       if (argv[0] != nullptr)
       {
-         KeyInput key_input;
-
          // --- config
          std::filesystem::path pathApplicationAbsolute = std::filesystem::absolute(argv[0]);
          std::filesystem::path pathBaseDir = pathApplicationAbsolute;
          pathBaseDir.remove_filename();
 
          SystemConfigFile  config(pathBaseDir.c_str());
-         printf("SysConfig sysAudio: %s\n\r", config.GetSystemSoundPath().c_str());
-         printf("SysConfig Mp3Audio: %s\n\r", config.GetMp3Path().c_str());
-         printf("SysConfig Storage:  %s\n\r", config.GetPersistentStorageDirPath().c_str());
-         printf("SysConfig Numbers:  %s\n\r",(config.GetNumberFormat()==SystemConfigFile::NumberFormat::GERMAN)?"GERMAN":"ENGLISH");
-         printf("SysConfig Dis.Wifi: %i\n\r", config.DisableWifi());
-         printf("SysConfig shutdown: %i\n\r", config.GetAutoShutdownInMinutes());
+         printf("SysConfig sysAudio:  %s\n\r", config.GetSystemSoundPath().c_str());
+         printf("SysConfig Mp3Audio:  %s\n\r", config.GetMp3Path().c_str());
+         printf("SysConfig Storage:   %s\n\r", config.GetPersistentStorageDirPath().c_str());
+         printf("SysConfig Numbers:   %s\n\r",(config.GetNumberFormat()==SystemConfigFile::NumberFormat::GERMAN)?"GERMAN":"ENGLISH");
+         printf("SysConfig Dis.Wifi:  %i\n\r", config.DisableWifi());
+         printf("SysConfig shutdown:  %i\n\r", config.GetAutoShutdownInMinutes());
+         printf("SysConfig SrvNxtDir: %i\n\r", config.AllowNextDirByServiceKey());
+
+
+         KeyInput key_input(config.AllowNextDirByServiceKey());
 
          if (config.DisableWifi() && !key_input.IsServiceKeyPressed())
          {

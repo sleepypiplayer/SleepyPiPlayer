@@ -10,7 +10,7 @@
 class KeyInput
 {
 public:
-   KeyInput();
+   KeyInput(bool bUseServiceKeyAsNextDir);
    virtual ~KeyInput();
 
    enum KEY

@@ -124,8 +124,9 @@ private:
 class KeyInput::PrivateData
 {
 public:
-   PrivateData()
+   PrivateData(bool bUseServiceKeyAsNextDir)
    {
+      m_bUseServiceKeyAsNextDir = bUseServiceKeyAsNextDir;
       std::unique_lock<std::mutex> guard(m_Mutex);
       m_Thread = std::thread(ThreadFunction, this);
       m_ConditionStarted.wait(guard); // wait for detection of m_bServiceKeyIsPressed
@@ -139,6 +140,7 @@ public:
 
    volatile bool             m_bStopThread = false;
    volatile bool             m_bGpioProblem = false;
+   bool                      m_bUseServiceKeyAsNextDir = false; // SystemConfigFile::AllowNextDirByServiceKey()
    std::list<KeyInput::KEY>  m_listDetectedKeys;
    std::atomic<bool>         m_bServiceKeyIsPressed = false;
    std::thread               m_Thread;
@@ -217,7 +219,7 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
          }
       }
 
-      // --- resed invalid
+      // --- reset invalid
       if (nNofPressedKeys == 0)
       {
          bInvalid = false;
@@ -262,6 +264,13 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
          if (nNofPressedKeys == 1 && keyInfo.WasPressed() && !bInfoDir)
          {
              eNewKey = KeyInput::KEY_Info;
+         }
+         if (pThis->m_bUseServiceKeyAsNextDir)
+         {
+            if (nNofPressedKeys == 1 && keyServ.WasPressed())
+            {
+               eNewKey = KeyInput::KEY_DirNext;
+            }
          }
 
          // -- Key-Combinations
@@ -393,9 +402,9 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
 
 // ============================================================================
 
-KeyInput::KeyInput()
+KeyInput::KeyInput(bool bUseServiceKeyAsNextDir)
 {
-   m_pPriv = std::make_unique<KeyInput::PrivateData>();
+   m_pPriv = std::make_unique<KeyInput::PrivateData>(bUseServiceKeyAsNextDir);
 }
 
 // ----------------------------------------------------------------------------

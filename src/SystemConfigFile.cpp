@@ -9,6 +9,7 @@
 //    NUMBER_FORMAT        ENGLISH                      # "ENGLISH" or "GERMAN"   e.g. say "sieben-und-zwanzig" or "twenty-seven"
 //    DISABLE_WIFI         ON                           # "ON" or "OFF"  default=ON  save battery by disabling wifi (Service-mode can still enable WIFI)
 //    AUTO_SHUTDOWN        25                           # time in minutes (-1: no shutdown)
+//    SRV_KEY_CHG_DIR      OFF                          # "ON" or "OFF"  default=OFF  single-press of blue service-key: change directory
 // license: free software   (sleepypiplayer(at)saftfresse.de)  [A.D.2025]
 // - Do whatever you want with the software.
 // - Do not claim my work as your own.
@@ -102,6 +103,7 @@ public:
   std::string m_txtMp3Path;
   std::string m_txtStorageDirPath;
   bool        m_bWifiOff = false;  // disable wifi
+  bool        m_bAllowNextDirByServiceKey = false;
   static StaticSystemConfigSysFilePath  m_SystemSoundPath;
   static StaticSystemConfigNumberFormat m_NumberFormat;
 };
@@ -170,6 +172,7 @@ void SystemConfigFile::PrivateData::DecodeLine(const char* txtRawLine)
    const char* txtShutdown  = "AUTO_SHUTDOWN";
    const char* txtWIFI_OFF  = "DISABLE_WIFI";
    const char* txtStorage   = "STORAGE_DIR";
+   const char* txtServDir   = "SRV_KEY_CHG_DIR";
 
    std::string txtLine(txtRawLine);
    if (txtLine.find('#') != std::string::npos)
@@ -236,6 +239,22 @@ void SystemConfigFile::PrivateData::DecodeLine(const char* txtRawLine)
          }
       }
    }
+  if (StartsWith(txtLine, txtServDir))
+   {
+      m_bAllowNextDirByServiceKey = false;
+      txtLine.erase(0, strlen(txtServDir));
+      TrimString(txtLine);
+      if (txtLine.length() == 2)
+      {
+         bool bAllow = true;
+         bAllow = (bAllow && (txtLine.at(0) == 'o' || txtLine.at(0) == 'O'));
+         bAllow = (bAllow && (txtLine.at(1) == 'n' || txtLine.at(1) == 'N'));
+         if (bAllow)
+         {
+            m_bAllowNextDirByServiceKey = true;
+         }
+      }
+   }
    if (StartsWith(txtLine, txtStorage))
    {
       txtLine.erase(0, strlen(txtStorage));
@@ -298,3 +317,12 @@ std::string SystemConfigFile::GetPersistentStorageDirPath()
 {
    return m_pPriv->m_txtStorageDirPath;
 }
+
+// -----------------------------------------------------------------------------
+// single press on blue button -> next directory (small children could like that)
+bool SystemConfigFile::AllowNextDirByServiceKey()
+{
+   return m_pPriv->m_bAllowNextDirByServiceKey;
+}
+
+

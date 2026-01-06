@@ -9,6 +9,7 @@
 //    NUMBER_FORMAT        ENGLISH                      # "ENGLISH" or "GERMAN"   e.g. say "sieben-und-zwanzig" or "twenty-seven"
 //    DISABLE_WIFI         ON                           # "ON" or "OFF"  default=ON  save battery by disabling wifi (Service-mode can still enable WIFI)
 //    AUTO_SHUTDOWN        25                           # time in minutes (-1: no shutdown)
+//    SRV_KEY_CHG_DIR      OFF                          # "ON" or "OFF"  default=OFF  single-press of blue service-key: change directory
 // ----------------------------------------------------------------------------
 #pragma once
 #include <string>
@@ -33,6 +34,7 @@ public:
    static NumberFormat GetNumberFormat();
    bool                DisableWifi();
    int                 GetAutoShutdownInMinutes();
+   bool                AllowNextDirByServiceKey();  // single press on blue button -> next directory
 
 private:
    class PrivateData;
