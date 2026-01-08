@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
 
          KeyInput key_input(config.AllowNextDirByServiceKey());
 
-         if (config.DisableWifi() && !key_input.IsServiceKeyPressed())
+         if (config.DisableWifi())
          {
             printf("#= rfkill block wifi\n");
             std::system("sudo rfkill block wifi");
@@ -136,13 +136,26 @@ int main(int argc, char* argv[])
          if (bShutdown && config.GetAutoShutdownInMinutes() >= 0)
          {
             printf("#= Shutdown\n");
+            std::system("sudo umount /SLEEPY_SAVE");
             std::system("sudo shutdown --poweroff +0");
          }
          if (bService)
          {
             printf("#= Service Mode\n");
+
+            // Restart of wlan0 requires write-access to /etc/resolv.conf
+            // unused alternative to allow write-access to root-file-system: OverlayFileSystem
+            // if (std::filesystem::is_directory("/SLEEPY_TMPFS_OVERLAY"))
+            // {
+            //    std::system("sudo mount -t tmpfs -o size=2M none /SLEEPY_TMPFS_OVERLAY");
+            //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_tmpfs");
+            //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_work");
+            //    std::system("sudo mount -t overlay -o lowerdir=/etc,upperdir=/SLEEPY_TMPFS_OVERLAY/etc_tmpfs,workdir=/SLEEPY_TMPFS_OVERLAY/etc_work none /etc");
+            // }
+
+            std::system("sudo mount -o remount,rw /");
             std::system("sudo rfkill unblock wifi");
-            std::system("sudo systemctl restart networking");
+            std::system("sudo systemctl restart ifup@wlan0");
 
             std::chrono::time_point<std::chrono::steady_clock> timeStart = std::chrono::steady_clock::now();
             std::chrono::time_point<std::chrono::steady_clock> timeNow   = std::chrono::steady_clock::now();

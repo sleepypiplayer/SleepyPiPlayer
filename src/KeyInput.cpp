@@ -129,7 +129,7 @@ public:
       m_bUseServiceKeyAsNextDir = bUseServiceKeyAsNextDir;
       std::unique_lock<std::mutex> guard(m_Mutex);
       m_Thread = std::thread(ThreadFunction, this);
-      m_ConditionStarted.wait(guard); // wait for detection of m_bServiceKeyIsPressed
+      m_ConditionStarted.wait(guard); // wait for thread to become operational
    }
 
    virtual ~PrivateData()
@@ -142,7 +142,6 @@ public:
    volatile bool             m_bGpioProblem = false;
    bool                      m_bUseServiceKeyAsNextDir = false; // SystemConfigFile::AllowNextDirByServiceKey()
    std::list<KeyInput::KEY>  m_listDetectedKeys;
-   std::atomic<bool>         m_bServiceKeyIsPressed = false;
    std::thread               m_Thread;
    std::mutex                m_Mutex;
    std::condition_variable   m_ConditionStarted;
@@ -227,7 +226,6 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
       }
 
       KeyInput::KEY eNewKey = KeyInput::KEY_NONE;
-      bool bServiceKeyCurrentlyPressed = keyServ.IsPressed();  // do not disable wifi on startup
 
       if (!bShutdown && !bInvalid)
       {
@@ -351,8 +349,6 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
       {
          std::lock_guard<std::mutex> guard(pThis->m_Mutex);
 
-         pThis->m_bServiceKeyIsPressed = bServiceKeyCurrentlyPressed;
-
          if (bShutdown)
          {
             bShutdown = false;
@@ -427,10 +423,3 @@ std::list<KeyInput::KEY> KeyInput::GetInputKeys()
    return listKeys;
 }
 
-// ----------------------------------------------------------------------------
-
-bool KeyInput::IsServiceKeyPressed()  // pressed on startup: do not disable wifi
-{
-   std::lock_guard<std::mutex> guard(m_pPriv->m_Mutex);
-   return m_pPriv->m_bServiceKeyIsPressed;
-}

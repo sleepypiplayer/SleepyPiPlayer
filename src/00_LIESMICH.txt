@@ -146,8 +146,8 @@ müssen noch einige Partitionen erstellt werden mit "GParted".
 
 (Partition 1 und 2 wurden durch das dietpi-image angelegt.)
 Partition.1 Fat32  128M  erzeugt von DietPi image         /boot
-partition.2 ext4  2560M  erzeugt von DietPi image         /
-partition.3 ext4   512M  sleepy   (software)              /SLEEPY_FW
+partition.2 ext4  2944M  erzeugt von DietPi image         /
+partition.3 ext4   256M  sleepy   (software)              /SLEEPY_FW
 partition.4 extended partition verbleibende Größe
 partition.5 Fat32  512M  save/storage.bin                /SLEEPY_SAVE
 partition.6 ext4  ????M  mp3                             /SLEEPY_MP3
@@ -167,9 +167,9 @@ sudo nano /media/xxx/root/etc/fstab
   setze Größe von /var auf 5M
     tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
   füge neue Partitionen hinzu  (xxxxxxxx ersetzen: siehe Partition.1)
-    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime                 0    2
+    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime,rw              0    2
     PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
-    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime                 0    2
+    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime,rw              0    2
 
 nano /media/xxx/BOOT/dietpi-wifi.txt
   aWIFI_SSID[0]='mein_wifi'
@@ -181,6 +181,8 @@ nano /media/xxx/BOOT/dietpi.txt
   AUTO_SETUP_NET_ETHERNET_ENABLED=0
   AUTO_SETUP_NET_WIFI_ENABLED=1
   AUTO_SETUP_NET_WIFI_COUNTRY_CODE=DE
+  AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=0
+  AUTO_SETUP_SWAPFILE_SIZE=0
 
 
 
@@ -206,23 +208,28 @@ aktuell wird "dietpi-sortware" ausgeführt   ESC=zurück
   password: setze das gleiche Passwort für alle Abfragen
   UART: disable <yes>
   select "DietPi-Config"
-    "Display Options"
-      "Display Resolution"
-         -> set "Headless"   (ohne Bildschirm)
-      "LED Control"
-        "ACT"
-          -> set "none"
-        "PWR"
-          -> set "none"
-        "mmc0"
-          -> set "none"
-    "Audio Options"
-      "Enable: install ALSA"
-        -> OK
-      "Sound card"
-        -> set "hw:0,0" : Device USB Audio
-      "Auto-conversion"
-        -> set "On"
+    * "Display Options"
+        "Display Resolution"
+           -> set "Headless"   (ohne Bildschirm)
+        "LED Control"
+          "ACT"
+            -> set "none"
+          "PWR"
+            -> set "none"
+          "mmc0"
+            -> set "none"
+    * "Audio Options"
+        "Enable: install ALSA"
+          -> OK
+        "Sound card"
+          -> set "hw:0,0" : Device USB Audio
+        "Auto-conversion"
+          -> set "On"
+    * "Advanced Options"
+        "Swap file"
+          -> set "Off"
+        "Time sync mode"
+          -> set "Custom"
   -> "SSH-server"  ändere auf "OpenSSH Server"
   -> "Log System"  behalte    "DeitPi-RAMlog#1"
   -> "Install"     select "OK"
@@ -231,13 +238,13 @@ aktuell wird "dietpi-sortware" ausgeführt   ESC=zurück
 
 lege die Verzeichnisse am raspberry an
 
-mkdir     /SLEEPY_FW/sleepy
-chmod 777 /SLEEPY_FW/sleepy
+sudo mkdir     /SLEEPY_FW/sleepy
+sudo chmod 777 /SLEEPY_FW/sleepy
 
-mkdir     /SLEEPY_MP3/mp3
-chmod 777 /SLEEPY_MP3/mp3
+sudo mkdir     /SLEEPY_MP3/mp3
+sudo chmod 777 /SLEEPY_MP3/mp3
 
-mkdir /SLEEPY_SAVE/save
+sudo mkdir /SLEEPY_SAVE/save
 
 -----
 
@@ -367,6 +374,8 @@ die Aufstart-Zeiten prüfen, bevor auf ein Nur-Lese Dateisystem gewechselt wird
    systemctl list-unit-files
    systemctl list-units
    systemctl list-dependencies networking
+modifizierte Dateien finden
+   inotifywait --monitor --event modify -r /tmp /var /run /sbin /etc /srv /usr
 
 schnellere Aufstart-Zeiten durch Abschalten von DateiSystem-Prüfung
 (später wird eh auf ein read-only Nur-Lese-Dateisystem gewechselt)
@@ -474,6 +483,12 @@ neue MP3-Dateien auf den raspberry kopieren
   (Das Passwort könnte auf der Innenseite vom Gehäusedeckel stehen.)
   - sudo mount -o remount,rw /SLEEPY_MP3
   - rm /SLEEPY_MP3/mp3/audiobook2
-- scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
+- neues Hörbuch vom PC zum Raspberry kopieren
+  - scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
 - den Service-Mode durch Druck auf den roten Ein/AUS-Knopf verlassen
+
+Achtung:
+Das Starten einer WLAN-Verbindung benötigt Schreib-Zugriff auf /etc/resolv.conf
+Deshalb macht der Service-Mode das Dateisystem der root-partition beschreibbar.
+("sudo mount -o remount,rw /")
 

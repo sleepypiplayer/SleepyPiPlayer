@@ -143,8 +143,8 @@ create some additional partitions on your linux-PC by using "GParted".
 
 (Partition 1 and 2 are already created by the dietpi-image.)
 Partition.1 Fat32  128M  created by DietPi image         /boot
-partition.2 ext4  2560M  created by DietPi image         /
-partition.3 ext4   512M  sleepy   (software)             /SLEEPY_FW
+partition.2 ext4  2944M  created by DietPi image         /
+partition.3 ext4   256M  sleepy   (software)             /SLEEPY_FW
 partition.4 extended partition remaining disk size
 partition.5 Fat32  512M  save/storage.bin                /SLEEPY_SAVE
 partition.6 ext4  ????M  mp3                             /SLEEPY_MP3
@@ -163,9 +163,9 @@ sudo nano /media/xxx/SLEEPY_root/etc/fstab
   change size of /var/log to 5M
     tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
   add new partitions  (replace xxxxxxxx: see already existing partition.1)
-    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime                 0    2
+    PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime,rw              0    2
     PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
-    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime                 0    2
+    PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime,rw              0    2
 
 nano /media/xxx/SLEEPY_BOOT/dietpi-wifi.txt
   aWIFI_SSID[0]='my_wifi'
@@ -177,7 +177,8 @@ nano /media/xxx/SLEEPY_BOOT/dietpi.txt
   AUTO_SETUP_NET_ETHERNET_ENABLED=0
   AUTO_SETUP_NET_WIFI_ENABLED=1
   AUTO_SETUP_NET_WIFI_COUNTRY_CODE=?? e.g. "DE"
-
+  AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=0
+  AUTO_SETUP_SWAPFILE_SIZE=0
 
 
 
@@ -202,23 +203,28 @@ you are now in dietpi-sortware   ESC=back
   password: set the same password to all entities
   UART: disable <yes>
   select "DietPi-Config"
-    "Display Options"
-      "Display Resolution"
-         -> set "Headless"
-      "LED Control"
-        "ACT"
-          -> set "none"
-        "default-on"
-          -> set "none"
-        "mmc0"
-          -> set "none"
-    "Audio Options"
-      "Enable: install ALSA"
-        -> OK
-      "Sound card"
-        -> set "hw:0,0" : Device USB Audio
-      "Auto-conversion"
-        -> set "On"
+    * "Display Options"
+        "Display Resolution"
+           -> set "Headless"
+        "LED Control"
+          "ACT"
+            -> set "none"
+          "default-on"
+            -> set "none"
+          "mmc0"
+            -> set "none"
+    * "Audio Options"
+        "Enable: install ALSA"
+          -> OK
+        "Sound card"
+          -> set "hw:0,0" : Device USB Audio
+        "Auto-conversion"
+          -> set "On"
+    * "Advanced Options"
+        "Swap file"
+          -> set "Off"
+        "Time sync mode"
+          -> set "Custom"
   -> "SSH-server"  change to "OpenSSH Server"
   -> "Log System"  keep      "DeitPi-RAMlog#1"
   -> "Install"     select "OK"
@@ -227,13 +233,13 @@ you are now in dietpi-sortware   ESC=back
 
 create the directories on raspberry
 
-mkdir     /SLEEPY_FW/sleepy
-chmod 777 /SLEEPY_FW/sleepy
+sudo mkdir     /SLEEPY_FW/sleepy
+sudo chmod 777 /SLEEPY_FW/sleepy
 
-mkdir     /SLEEPY_MP3/mp3
-chmod 777 /SLEEPY_MP3/mp3
+sudo mkdir     /SLEEPY_MP3/mp3
+sudo chmod 777 /SLEEPY_MP3/mp3
 
-mkdir /SLEEPY_SAVE/save
+sudo mkdir /SLEEPY_SAVE/save
 
 -----
 
@@ -363,6 +369,8 @@ check the boot-duration before changing to read-only-filesystem
    systemctl list-unit-files
    systemctl list-units
    systemctl list-dependencies networking
+trace file-modifications
+   inotifywait --monitor --event modify -r /tmp /var /run /sbin /etc /srv /usr
 
 perform boot-time optimization by turning off FileSystem-check
 (we will change to read-only file-system later)
@@ -471,7 +479,12 @@ Update MP3-Files on raspberry
   (The password could be on the inside of the device lid.)
   - sudo mount -o remount,rw /SLEEPY_MP3
   - rm /SLEEPY_MP3/mp3/audiobook2
-- scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
+- copy new audiobook from PC to raspberry
+  - scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
 - leave Service-Mode by pressing onoff-button (red)
 
+Attention:
+Starting a WIFI-connection requires write-access to /etc/resolv.conf
+Because of this, the service-mode remounts the root-file-system  read-write.
+("sudo mount -o remount,rw /")
 

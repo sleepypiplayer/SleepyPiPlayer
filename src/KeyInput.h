@@ -35,9 +35,6 @@ public:
 
    std::list<KEY> GetInputKeys();
 
-   // if blue button is pressed on startup: do not turn off wifi
-   bool IsServiceKeyPressed();
-
 private:
    class PrivateData;
    std::unique_ptr<PrivateData> m_pPriv;
