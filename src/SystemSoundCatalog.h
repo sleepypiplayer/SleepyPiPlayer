@@ -26,6 +26,8 @@ public:
    std::string Text_Of();
    std::string Text_Shutdown();     // "a key press prevents from shutdown"
    std::string Text_ShuttingDown(); // "shutting down" / "ich schalte aus"
+   std::string Text_ShutdownIn();   // "shutdown in" / "Abschaltung in" ...
+   std::string Text_Minutes();      // ... "minutes" / "Minuten"
    std::string Text_ChecksumProblem();
    std::string Text_Mp3FileProblem();
    std::string Text_NoMP3Found();

@@ -83,3 +83,5 @@ https://www.narakeet.com/   English-American  "Debbie"  (paid 6 EUR 2024-09 as u
 . special
 . dot
 . slash
+. shutdown in . 10 . minutes
+

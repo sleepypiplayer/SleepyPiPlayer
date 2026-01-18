@@ -247,6 +247,20 @@ std::string SystemSoundCatalog::Text_ShuttingDown()
 
 // ----------------------------------------------------------------------------
 
+std::string SystemSoundCatalog::Text_ShutdownIn()   // "shutdown in" / "Abschaltung in" ...
+{
+   return m_pPriv->GetDirectory() + "sys_text_shutdown_in.mp3";
+}
+
+// ----------------------------------------------------------------------------
+
+std::string SystemSoundCatalog::Text_Minutes()      // ... "minutes" / "Minuten"
+{
+   return m_pPriv->GetDirectory() + "sys_text_minutes.mp3";
+}
+
+// ----------------------------------------------------------------------------
+
 std::string SystemSoundCatalog::Text_ChecksumProblem()
 {
    return m_pPriv->GetDirectory() + "sys_text_checksum.mp3";

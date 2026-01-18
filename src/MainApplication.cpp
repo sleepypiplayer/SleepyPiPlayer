@@ -18,6 +18,7 @@
 #include "AudioPlayer.h"
 #include "PersistentStorage.h"
 #include "SystemSoundCatalog.h"
+#include "NumberToSound.h"
 #include <cstdlib>
 #include <cstdio>
 #include <filesystem>
@@ -31,7 +32,7 @@
 void print_to_console(KeyInput::KEY key);
 void execute_thread_rfkill();
 void execute_thread_enable_wifi();
-void play_audiofeedback_shutdown(int nVolume);
+void play_audiofeedback_shutdown(int nVolume, int nInMinutes); // nInMinutes -1: immediate
 
 // ----------------------------------------------------------------------------
 
@@ -148,7 +149,7 @@ int main(int argc, char* argv[])
          if (bShutdown && config.GetAutoShutdownInMinutes() >= 0)
          {
             printf("#= Shutdown\n");
-            play_audiofeedback_shutdown(storage.GetVolume());
+            play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/-1);
             std::system("sudo umount /SLEEPY_SAVE");
             std::system("sudo shutdown --poweroff +0");
          }
@@ -176,11 +177,12 @@ int main(int argc, char* argv[])
             {
                printf("#= Shutdown\n");
                std::system("sudo shutdown --poweroff +1"); // just safety
-               play_audiofeedback_shutdown(storage.GetVolume());
+               play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/-1);
                std::system("sudo shutdown --poweroff +0");
             }
             else
             {
+               play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/15);
                std::system("sudo shutdown --poweroff +15");
             }
          }
@@ -221,12 +223,25 @@ void execute_thread_enable_wifi()
 
 // ----------------------------------------------------------------------------
 
-void play_audiofeedback_shutdown(int nVolume)
+// play shutdown audio-message
+// nInMinutes  X: "shutdwon in X minutes"  / -1 : "shutting down"
+void play_audiofeedback_shutdown(int nVolume, int nInMinutes)
 {
    SystemSoundCatalog catalog;
    std::list<std::string> listMp3Path;
    listMp3Path.push_back(catalog.Silence());
-   listMp3Path.push_back(catalog.Text_ShuttingDown());
+   if (nInMinutes > 0)
+   {
+      NumberToSound numbers;
+      listMp3Path.push_back(catalog.Text_ShutdownIn());
+      numbers.AddNumber(listMp3Path, nInMinutes);
+      listMp3Path.push_back(catalog.Text_Minutes());
+   }
+   else
+   {
+      listMp3Path.push_back(catalog.Text_ShuttingDown());
+   }
+   int nFileLimit = listMp3Path.size();
    for (int i = 0; i < 20; i++)
       listMp3Path.push_back(catalog.Silence());
    Mp3DirFileList  Mp3ListShutdown(listMp3Path);
@@ -236,8 +251,8 @@ void play_audiofeedback_shutdown(int nVolume)
       /* shudown  minutes:*/ 10,
       /* checksum problem:*/ false);
    std::chrono::milliseconds durationSleep{10};
-   int nTimeLimit = 500;
-   while (player.GetCurrentPlaybackInfo().GetFileNumber() <= 2 && nTimeLimit > 0)
+   int nTimeLimit = (nInMinutes > 0)? 800 : 500;
+   while (player.GetCurrentPlaybackInfo().GetFileNumber() <= nFileLimit && nTimeLimit > 0)
    {
       std::this_thread::sleep_for(durationSleep); // save cpu-power
       --nTimeLimit;
