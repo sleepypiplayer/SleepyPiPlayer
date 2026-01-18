@@ -183,7 +183,9 @@ nano /media/xxx/BOOT/dietpi.txt
   AUTO_SETUP_NET_WIFI_COUNTRY_CODE=DE
   AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=0
   AUTO_SETUP_SWAPFILE_SIZE=0
-
+  CONFIG_SERIAL_CONSOLE_ENABLE=0
+  AUTO_SETUP_RAMLOG_MAXSIZE=5
+  SURVEY_OPTED_IN=0
 
 
 *--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*
@@ -383,6 +385,22 @@ schnellere Aufstart-Zeiten durch Abschalten von DateiSystem-Prüfung
 sudo nano /boot/cmdline.txt
     ersetze "fsck.repair=yes" durch "fsck.mode=skip"
 
+sudo nano /etc/fstab
+  Dateisystem-Prüfung abschalten: die letzte Ziffer jeder Zeile auf "0" ändern  (startet um 0.2s schneller)
+   PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    2
+   PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    1
+   PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    2
+   PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    2
+   PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    2
+  ----
+   PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    0
+   PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    0
+   PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    0
+   PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    0
+   PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    0
+
+
+
 WIFI/WLAN im normalen Betrieb abschalten: Strom sparen
 
 nano /SLEEPY_FW/sleepy/src/sleepy.cfg
@@ -419,11 +437,11 @@ sudo nano /etc/fstab
 # "ro" anhängen: "read-only"  bei partition.1,  partition.2, partition.3 and partition.6
 # => partition.5 "SLEEPY_SAVE" muss beschreibbar bleiben
 # WLAN-Probleme: Man kann immer noch die SD-Karte entnehmen und fstab und alle anderen Dateien editieren.
-PARTUUID=59786d62-01  /boot         vfat    noatime,lazytime,ro                      0    2
-PARTUUID=59786d62-02  /             ext4    noatime,lazytime,ro                      0    1
-PARTUUID=59786d62-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    2
-PARTUUID=59786d62-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    2
-PARTUUID=59786d62-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    2
+PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    2
+PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    1
+PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    2
+PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    2
+PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    2
 
 ---
 

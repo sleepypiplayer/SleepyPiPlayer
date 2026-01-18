@@ -26,7 +26,14 @@
 #include <csignal>
 #include <atomic>
 
-void print_to_console(KeyInput::KEY key); // forward-declaration
+
+// ----- forward-declarations ----
+void print_to_console(KeyInput::KEY key);
+void execute_thread_rfkill();
+void execute_thread_enable_wifi();
+void play_audiofeedback_shutdown(int nVolume);
+
+// ----------------------------------------------------------------------------
 
 namespace   // anonymous namespace
 {
@@ -72,11 +79,13 @@ int main(int argc, char* argv[])
 
          KeyInput key_input(config.AllowNextDirByServiceKey());
 
+         std::thread threadRfkill;
+
          if (config.DisableWifi())
          {
             printf("#= rfkill block wifi\n");
-            std::system("sudo rfkill block wifi");
-            std::system("sudo rfkill block bluetooth");
+            std::thread threadTempRfkill( execute_thread_rfkill );
+            threadRfkill.swap(threadTempRfkill);
          }
 
          PersistentStorage storage(config.GetPersistentStorageDirPath());
@@ -133,9 +142,13 @@ int main(int argc, char* argv[])
             }
          }
 
+         if (threadRfkill.joinable())
+             threadRfkill.join();
+
          if (bShutdown && config.GetAutoShutdownInMinutes() >= 0)
          {
             printf("#= Shutdown\n");
+            play_audiofeedback_shutdown(storage.GetVolume());
             std::system("sudo umount /SLEEPY_SAVE");
             std::system("sudo shutdown --poweroff +0");
          }
@@ -143,19 +156,8 @@ int main(int argc, char* argv[])
          {
             printf("#= Service Mode\n");
 
-            // Restart of wlan0 requires write-access to /etc/resolv.conf
-            // unused alternative to allow write-access to root-file-system: OverlayFileSystem
-            // if (std::filesystem::is_directory("/SLEEPY_TMPFS_OVERLAY"))
-            // {
-            //    std::system("sudo mount -t tmpfs -o size=2M none /SLEEPY_TMPFS_OVERLAY");
-            //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_tmpfs");
-            //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_work");
-            //    std::system("sudo mount -t overlay -o lowerdir=/etc,upperdir=/SLEEPY_TMPFS_OVERLAY/etc_tmpfs,workdir=/SLEEPY_TMPFS_OVERLAY/etc_work none /etc");
-            // }
-
-            std::system("sudo mount -o remount,rw /");
-            std::system("sudo rfkill unblock wifi");
-            std::system("sudo systemctl restart ifup@wlan0");
+            std::thread threadService( execute_thread_enable_wifi );
+            threadService.detach();
 
             std::chrono::time_point<std::chrono::steady_clock> timeStart = std::chrono::steady_clock::now();
             std::chrono::time_point<std::chrono::steady_clock> timeNow   = std::chrono::steady_clock::now();
@@ -174,21 +176,7 @@ int main(int argc, char* argv[])
             {
                printf("#= Shutdown\n");
                std::system("sudo shutdown --poweroff +1"); // just safety
-               SystemSoundCatalog catalog;
-               std::list<std::string> listMp3Path;
-               listMp3Path.push_back(catalog.Text_ShuttingDown());
-               for (int i = 0; i < 10; i++)
-                  listMp3Path.push_back(catalog.Silence());
-               Mp3DirFileList  Mp3ListShutdown(listMp3Path);
-               AudioPlayer  player(
-                  storage.GetVolume(),
-                  &Mp3ListShutdown,
-                  /* shudown  minutes:*/ 10,
-                  /* checksum problem:*/ false);
-               while (player.GetCurrentPlaybackInfo().GetFileNumber() == 1)
-               {
-                  std::this_thread::sleep_for(durationSleep); // save cpu-power
-               }
+               play_audiofeedback_shutdown(storage.GetVolume());
                std::system("sudo shutdown --poweroff +0");
             }
             else
@@ -201,7 +189,60 @@ int main(int argc, char* argv[])
    return 0;
 }
 
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
+// do not wait for rfkill: play audio 0.7 seconds earlier
+void execute_thread_rfkill()
+{
+   std::system("sudo rfkill block wifi");
+   std::system("sudo rfkill block bluetooth");
+}
+
+// ----------------------------------------------------------------------------
+
+// do not wait for WIFI: immediate audio-feedback "shutting down"
+void execute_thread_enable_wifi()
+{
+   // Restart of wlan0 requires write-access to /etc/resolv.conf
+   // unused alternative to allow write-access to root-file-system: OverlayFileSystem
+   // if (std::filesystem::is_directory("/SLEEPY_TMPFS_OVERLAY"))
+   // {
+   //    std::system("sudo mount -t tmpfs -o size=2M none /SLEEPY_TMPFS_OVERLAY");
+   //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_tmpfs");
+   //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_work");
+   //    std::system("sudo mount -t overlay -o lowerdir=/etc,upperdir=/SLEEPY_TMPFS_OVERLAY/etc_tmpfs,workdir=/SLEEPY_TMPFS_OVERLAY/etc_work none /etc");
+   // }
+
+   std::system("sudo mount -o remount,rw /");
+   std::system("sudo rfkill unblock wifi");
+   std::system("sudo systemctl restart ifup@wlan0");
+}
+
+// ----------------------------------------------------------------------------
+
+void play_audiofeedback_shutdown(int nVolume)
+{
+   SystemSoundCatalog catalog;
+   std::list<std::string> listMp3Path;
+   listMp3Path.push_back(catalog.Silence());
+   listMp3Path.push_back(catalog.Text_ShuttingDown());
+   for (int i = 0; i < 20; i++)
+      listMp3Path.push_back(catalog.Silence());
+   Mp3DirFileList  Mp3ListShutdown(listMp3Path);
+   AudioPlayer  player(
+      nVolume,
+      &Mp3ListShutdown,
+      /* shudown  minutes:*/ 10,
+      /* checksum problem:*/ false);
+   std::chrono::milliseconds durationSleep{10};
+   int nTimeLimit = 500;
+   while (player.GetCurrentPlaybackInfo().GetFileNumber() <= 2 && nTimeLimit > 0)
+   {
+      std::this_thread::sleep_for(durationSleep); // save cpu-power
+      --nTimeLimit;
+   }
+}
 // ----------------------------------------------------------------------------
 
 void print_to_console(KeyInput::KEY key)
@@ -241,3 +282,4 @@ void print_to_console(KeyInput::KEY key)
    case KeyInput::KEY_Service:               printf("#= Service\n");                break;
    }
 }
+
