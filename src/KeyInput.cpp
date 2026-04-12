@@ -339,9 +339,17 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
                    bInvalid = true;
                 }
             }
-            else
+            else // if more than one key is pressed but without [Service] and without [Info]
             {
-               bInvalid = true;
+               if (keyBack.IsPressed() && !keyBack.LongPress() &&
+                   keyForw.IsPressed() && !keyForw.LongPress() )
+               {
+                  // only service-key is missing for Service-mode
+               }
+               else
+               {
+                  bInvalid = true;
+               }
             }
          }
       }
