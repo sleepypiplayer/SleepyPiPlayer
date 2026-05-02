@@ -108,7 +108,7 @@ Service-Mode - aktualisieren der MP3-Dateien am raspberry
 ============================================================
 ============================================================
  Schritt für Schritt Anleitung um die SD-card zu beschreiben
- (funktionierte am 2025-12-30)
+ (funktionierte am 2026-06-06)
 ============================================================
 ============================================================
 
@@ -162,11 +162,11 @@ sudo mkdir /media/xxx/SLEEPY_root/SLEEPY_MP3
 Einige Einstellungen auf der SD-Karte editieren
 
 sudo nano /media/xxx/root/etc/fstab
-  setze Größe von /tmp auf 7M
-    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
-  setze Größe von /var auf 5M
-    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
-  füge neue Partitionen hinzu  (xxxxxxxx ersetzen: siehe Partition.1)
+  setze Größe von /tmp auf 9M
+    tmpfs /tmp tmpfs size=9M,noatime,lazytime,nodev,nosuid,mode=1777
+  setze Größe von /var auf 7M
+    tmpfs /var/log tmpfs size=7M,noatime,lazytime,nodev,nosuid
+  füge neue Partitionen hinzu  (xxxxxxxx ersetzen: lsblk -o NAME,PARTUUID)
     PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime,rw              0    2
     PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
     PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime,rw              0    2
@@ -184,7 +184,7 @@ nano /media/xxx/BOOT/dietpi.txt
   AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=0
   AUTO_SETUP_SWAPFILE_SIZE=0
   CONFIG_SERIAL_CONSOLE_ENABLE=0
-  AUTO_SETUP_RAMLOG_MAXSIZE=5
+  AUTO_SETUP_RAMLOG_MAXSIZE=7
   SURVEY_OPTED_IN=0
 
 
@@ -200,6 +200,7 @@ ssh root@192.168.1.123
 Denke dir ein dietpi root-Passwort aus und notiere es auf der Innenseite
 vom Gehäusedeckel. Das Passwort muss nicht wirklich sicher sein,
 weil die Netzwerkverbindung normalerweise ausgeschaltet ist.
+Vorschlag: "sleepy"
 
 -----
 
@@ -207,7 +208,7 @@ weil die Netzwerkverbindung normalerweise ausgeschaltet ist.
 aktuell wird "dietpi-sortware" ausgeführt   ESC=zurück
 (siehe misc/dietpi-software.png)
   survey: no  ("opt out")
-  password: setze das gleiche Passwort für alle Abfragen
+  password: setze das gleiche Passwort für alle Abfragen  z.B. "sleepy"
   UART: disable <yes>
   select "DietPi-Config"
     * "Display Options"
@@ -325,6 +326,8 @@ installiere noch einige Pakete
   sudo apt-get --yes install rfkill
   sudo apt-get --yes install less
   sudo apt-get --yes install g++
+  sudo apt-get --yes install hostapd
+  sudo apt-get --yes install dnsmasq
 
 sudo systemctl unmask systemd-logind
 sudo systemctl start dbus systemd-logind
@@ -333,14 +336,14 @@ sudo systemctl start dbus systemd-logind
 
 übersetze den Quellcode am Raspberry
   cd /SLEEPY_FW/sleepy/src
-  chmod 777 compile_raspi_gpiod_1_6
-  ./compile_raspi_gpiod_1_6
-
-falls compile_raspi_gpiod_1_6 Fehler erzeugt, probiere gpiod_2_1
-  apt list --installed | grep gpiod
-  cd /SLEEPY_FW/sleepy/src
   chmod 777 compile_raspi_gpiod_2_1
   ./compile_raspi_gpiod_2_1
+
+falls compile_raspi_gpiod_2_1 Fehler erzeugt, probiere gpiod_1_6
+  apt list --installed | grep gpiod
+  cd /SLEEPY_FW/sleepy/src
+  chmod 777 compile_raspi_gpiod_1_6
+  ./compile_raspi_gpiod_1_6
 
 /SLEEPY_FW/sleepy$  ln -s src/sleepy     sleepy
 /SLEEPY_FW/sleepy$  ln -s src/sleepy.cfg sleepy.cfg
@@ -381,9 +384,6 @@ modifizierte Dateien finden
 
 schnellere Aufstart-Zeiten durch Abschalten von DateiSystem-Prüfung
 (später wird eh auf ein read-only Nur-Lese-Dateisystem gewechselt)
-
-sudo nano /boot/cmdline.txt
-    ersetze "fsck.repair=yes" durch "fsck.mode=skip"
 
 sudo nano /etc/fstab
   Dateisystem-Prüfung abschalten: die letzte Ziffer jeder Zeile auf "0" ändern  (startet um 0.2s schneller)
@@ -447,11 +447,11 @@ PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro        
 
 Nochmal die Größe der tmpfs prüfen
 sudo nano /etc/fstab
-  setze Größe von /tmp auf 7M
-    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
-  setze Größe von /var/log auf 5MB
-    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
-    
+  setze Größe von /tmp auf 9M
+    tmpfs /tmp tmpfs size=9M,noatime,lazytime,nodev,nosuid,mode=1777
+  setze Größe von /var/log auf 7M
+    tmpfs /var/log tmpfs size=7M,noatime,lazytime,nodev,nosuid
+
 ---
 
 sudo reboot
@@ -463,6 +463,9 @@ sudo mount -o remount,rw /
 sudo mount -o remount,rw /SLEEPY_MP3
 sudo mount -o remount,rw /SLEEPY_FW
 partition.5 bleibt read-write   "SLEEPY_SAVE"
+
+siehe auch:  /SLEEPY_FW/sleepy/src/sleepy.cfg
+SERVICE_REMOUNT_WRITE    /SLEEPY_MP3;/SLEEPY_FW
 
 prüfen:  /SLEEPY_FW/sleepy/src/sleepy.cfg
 DISABLE_WIFI ON
@@ -496,14 +499,30 @@ neue MP3-Dateien auf den raspberry kopieren
 =======================================================
 - den Raspberry einschalten
 - Service-Mode einschalten mit lang-druck auf blau + weiß + weiß
-- ssh dietpi@192.168.X.XXX
-  (Die IP-Adresse dafür kann der DHCP-Server im WLAN-Router liefern.)
-  (Das Passwort könnte auf der Innenseite vom Gehäusedeckel stehen.)
-  - sudo mount -o remount,rw /SLEEPY_MP3
-  - rm /SLEEPY_MP3/mp3/audiobook2
-- neues Hörbuch vom PC zum Raspberry kopieren
-  - scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
-- den Service-Mode durch Druck auf den roten Ein/AUS-Knopf verlassen
+
+=> Client-Mode (mit einem bestehenden WLAN verbunden)
+  - ssh dietpi@192.168.X.XXX
+    (Die IP-Adresse dafür kann der DHCP-Server im WLAN-Router liefern.)
+    (Das Passwort könnte "sleepy" sein, oder auf der Innenseite vom Gehäusedeckel stehen.)
+    - falls partition nur lesbar ist: sudo mount -o remount,rw /SLEEPY_MP3
+    - rm /SLEEPY_MP3/mp3/audiobook2
+  - neues Hörbuch vom PC zum Raspberry kopieren
+    - scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
+    - oder nimm filezilla (Server:192.168.x.XXX  User:dietpi  Passw:sleepy  Port:22)
+  - den Service-Mode durch Druck auf den roten Ein/AUS-Knopf verlassen
+
+=> AccessPoint-Mode (der Player erzeugt sein eigenes WLAN)
+  - Verbinde deinen PC mit dem WLAN vom SleepyPiPlayer
+    (Das Passwort wird vom Player angesagt)
+  - ssh dietpi@192.168.9.1
+    (Das Passwort könnte "sleepy" sein, oder auf der Innenseite vom Gehäusedeckel stehen.)
+    - falls partition nur lesbar ist: sudo mount -o remount,rw /SLEEPY_MP3
+    - rm /SLEEPY_MP3/mp3/audiobook2
+  - neues Hörbuch vom PC zum Raspberry kopieren
+    - scp -r audiobook4 dietpi@192.168.9.1:/SLEEPY_MP3/mp3
+    - oder nimm filezilla (Server:192.168.9.1  User:dietpi  Passw:sleepy  Port:22)
+  - den Service-Mode durch Druck auf den roten Ein/AUS-Knopf verlassen 
+
 
 Achtung:
 Das Starten einer WLAN-Verbindung benötigt Schreib-Zugriff auf /etc/resolv.conf

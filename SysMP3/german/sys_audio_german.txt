@@ -84,4 +84,5 @@ https://www.narakeet.com/   German-Standard "Gertrud"  (6 EUR gezahlt 2024-09 al
 . Punkt
 . Schrägstrich
 . Abschaltung in . 10 . Minuten
-
+. WLAN Passwort
+. WLAN Notfallpasswort

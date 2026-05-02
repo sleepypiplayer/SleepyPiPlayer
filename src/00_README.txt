@@ -107,7 +107,7 @@ service-mode - replace MP3-files on raspberry
 =======================================================
 =======================================================
  STEP BY STEP instructions to prepare SD-card
- (working 2025-12-30)
+ (working 2026-06-06)
 =======================================================
 =======================================================
 
@@ -158,11 +158,11 @@ sudo mkdir /media/xxx/SLEEPY_root/SLEEPY_MP3
 Edit some settings on the SD-Card
 
 sudo nano /media/xxx/SLEEPY_root/etc/fstab
-  change size of /tmp to 7M
-    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
-  change size of /var/log to 5M
-    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
-  add new partitions  (replace xxxxxxxx: see already existing partition.1)
+  change size of /tmp to 9M
+    tmpfs /tmp tmpfs size=9M,noatime,lazytime,nodev,nosuid,mode=1777
+  change size of /var/log to 7M
+    tmpfs /var/log tmpfs size=7M,noatime,lazytime,nodev,nosuid
+  add new partitions  (replace xxxxxxxx:    lsblk -o NAME,PARTUUID)
     PARTUUID=xxxxxxxx-03 /SLEEPY_FW      ext4    defaults,noatime,lazytime,rw              0    2
     PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE    vfat    defaults,noatime,dmask=000,fmask=111      0    2
     PARTUUID=xxxxxxxx-06 /SLEEPY_MP3     ext4    defaults,noatime,lazytime,rw              0    2
@@ -180,7 +180,7 @@ nano /media/xxx/SLEEPY_BOOT/dietpi.txt
   AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=0
   AUTO_SETUP_SWAPFILE_SIZE=0
   CONFIG_SERIAL_CONSOLE_ENABLE=0
-  AUTO_SETUP_RAMLOG_MAXSIZE=5
+  AUTO_SETUP_RAMLOG_MAXSIZE=7
   SURVEY_OPTED_IN=0
 
 
@@ -195,6 +195,7 @@ ssh root@192.168.1.123
 Think of a dietpi root-password and write it down on the inside of the device lid.
 The password does not need to be that secure, 
 because the network-connection is normally switched off.
+suggestion: "sleepy"
 
 -----
 
@@ -202,7 +203,7 @@ because the network-connection is normally switched off.
 you are now in dietpi-sortware   ESC=back
 (see misc/dietpi-software.png)
   survey: no  ("opt out")
-  password: set the same password to all entities
+  password: set the same password to all entities   e.g. "sleepy"
   UART: disable <yes>
   select "DietPi-Config"
     * "Display Options"
@@ -320,6 +321,8 @@ install some packages
   sudo apt-get --yes install rfkill
   sudo apt-get --yes install less
   sudo apt-get --yes install g++
+  sudo apt-get --yes install hostapd
+  sudo apt-get --yes install dnsmasq
 
 sudo systemctl unmask systemd-logind
 sudo systemctl start dbus systemd-logind
@@ -328,14 +331,14 @@ sudo systemctl start dbus systemd-logind
 
 compile the sourcecode on raspberry
   cd /SLEEPY_FW/sleepy/src
-  chmod 777 compile_raspi_gpiod_1_6
-  ./compile_raspi_gpiod_1_6
-
-if executing compile_raspi_gpiod_1_6 causes errors: try gpiod_2_1
-  apt list --installed | grep gpiod
-  cd /SLEEPY_FW/sleepy/src
   chmod 777 compile_raspi_gpiod_2_1
   ./compile_raspi_gpiod_2_1
+
+if executing compile_raspi_gpiod_2_1 causes errors: try gpiod_1_6
+  apt list --installed | grep gpiod
+  cd /SLEEPY_FW/sleepy/src
+  chmod 777 compile_raspi_gpiod_1_6
+  ./compile_raspi_gpiod_1_6
 
 /SLEEPY_FW/sleepy$  ln -s src/sleepy     sleepy
 /SLEEPY_FW/sleepy$  ln -s src/sleepy.cfg sleepy.cfg
@@ -376,9 +379,6 @@ trace file-modifications
 
 perform boot-time optimization by turning off FileSystem-check
 (we will change to read-only file-system later)
-
-sudo nano /boot/cmdline.txt
-    replace "fsck.repair=yes" with "fsck.mode=skip"
 
 sudo nano /etc/fstab
   disable FileSystemCheck: change last digit of each line to "0"    (startup is 0.2s faster)
@@ -441,11 +441,11 @@ PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro        
 ---
 
 check the size of tmpfs again
-sudo nano /media/xxx/root/etc/fstab
-  change size of /tmp to 7M
-    tmpfs /tmp tmpfs size=7M,noatime,lazytime,nodev,nosuid,mode=1777
-  change size of /var/log to 5M
-    tmpfs /var/log tmpfs size=5M,noatime,lazytime,nodev,nosuid
+sudo nano /etc/fstab
+  change size of /tmp to 9M
+    tmpfs /tmp tmpfs size=9M,noatime,lazytime,nodev,nosuid,mode=1777
+  change size of /var/log to 7M
+    tmpfs /var/log tmpfs size=7M,noatime,lazytime,nodev,nosuid
 
 ---
 
@@ -458,6 +458,9 @@ sudo mount -o remount,rw /
 sudo mount -o remount,rw /SLEEPY_MP3
 sudo mount -o remount,rw /SLEEPY_FW
 partition 5 remains read-write   "SLEEPY_SAVE"
+
+see also /SLEEPY_FW/sleepy/src/sleepy.cfg
+SERVICE_REMOUNT_WRITE    /SLEEPY_MP3;/SLEEPY_FW
 
 check  /SLEEPY_FW/sleepy/src/sleepy.cfg
 DISABLE_WIFI ON
@@ -491,14 +494,28 @@ Update MP3-Files on raspberry
 =======================================================
 - turn on the raspberry-player
 - enter Service-Mode by long-press of blue + white + white
-- ssh dietpi@192.168.X.XXX
-  (Get the ip-address from your WIFI-router DHCP-server.)
-  (The password could be on the inside of the device lid.)
-  - sudo mount -o remount,rw /SLEEPY_MP3
+
+=> client-mode  (connect to an existing WIFI-network)
+  - ssh dietpi@192.168.X.XXX
+    (Get the ip-address from your WIFI-router DHCP-server.)
+    (The password could be "sleepy", see on the inside of the device lid.)
+  - if partition is read-only:  sudo mount -o remount,rw /SLEEPY_MP3
   - rm /SLEEPY_MP3/mp3/audiobook2
-- copy new audiobook from PC to raspberry
-  - scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
-- leave Service-Mode by pressing onoff-button (red)
+  - copy new audiobook from PC to raspberry
+    scp -r audiobook4 dietpi@192.168.X.XXX:/SLEEPY_MP3/mp3
+    or use filezilla Server:192.168.X.XXX  User:dietpi  Passw:sleepy  Port:22
+  - leave Service-Mode by pressing onoff-button (red)
+
+=> AccessPoint-mode (the player creates its own WIFI-network)
+  - Connect your WIFI with the SleepyPiPlayer
+  - ssh dietpi@192.168.9.1
+    (The password could be "sleepy", see on the inside of the device lid.)
+  - if partition is read-only:  sudo mount -o remount,rw /SLEEPY_MP3
+  - rm /SLEEPY_MP3/mp3/audiobook2
+  - copy new audiobook from PC to raspberry
+    scp -r audiobook4 dietpi@192.168.9.1:/SLEEPY_MP3/mp3
+    or use filezilla Server:192.168.9.1  User:dietpi  Passw:sleepy  Port:22
+  - leave Service-Mode by pressing onoff-button (red)
 
 Attention:
 Starting a WIFI-connection requires write-access to /etc/resolv.conf

@@ -13,7 +13,12 @@
 class AudioPlayer
 {
 public:
-   AudioPlayer(int nVolumePct, Mp3DirFileList* pFiles, int nAutoShutdownMinutes, bool bChecksumProblem);
+   AudioPlayer(
+         int nVolumePct,
+         Mp3DirFileList* pFiles,
+         int nAutoShutdownMinutes,
+         bool bChecksumProblem,
+         std::string txtPassphrase );
    virtual ~AudioPlayer();
 
    void AddUserRequest(KeyInput::KEY  key);

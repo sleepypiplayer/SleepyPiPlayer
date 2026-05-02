@@ -34,7 +34,7 @@ public:
    bool IsReportingShutdown(); // still output .. 4, 3, 2 ...
    bool IsShutdownReported();  // countdown has finished without being canceled
 
-   void ReportServiceMode();      // "service  wifi active"
+   void ReportServiceMode(std::string txtPassphrase);      // "service  wifi active"
    bool IsServiceModeReported();  // finished output of "service"
 
    // used by AudioPlayer: play an audio-message instead of user-mp3-files

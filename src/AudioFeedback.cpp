@@ -286,7 +286,7 @@ public:
    bool IsReportingShutdown();
    bool IsShutdownReported();
 
-   void ReportServiceMode();
+   void ReportServiceMode(std::string txtPassphrase);
    bool IsServiceModeReported();
 
    const long  SAMPLE_RATE;   //  32000;
@@ -719,7 +719,7 @@ bool AudioFeedback::PrivateData::IsShutdownReported()
 
 // ----------------------------------------------------------------------------
 
-void AudioFeedback::PrivateData::ReportServiceMode()
+void AudioFeedback::PrivateData::ReportServiceMode(std::string txtPassphrase)
 {
    if (!m_bReportingService)
    {
@@ -727,6 +727,13 @@ void AudioFeedback::PrivateData::ReportServiceMode()
       std::list<std::string> listAudioMain;
       listAudioMain.push_back(m_SoundCatalog.Text_Service());
       listAudioMain.push_back(m_SoundCatalog.Silence());
+      if (txtPassphrase.length() > 0)
+      {
+         listAudioMain.push_back(m_SoundCatalog.Text_WlanPassphrase());
+         listAudioMain.push_back(m_SoundCatalog.Silence());
+         m_SoundCatalog.SpellString(listAudioMain, txtPassphrase);
+         listAudioMain.push_back(m_SoundCatalog.Silence());
+      }
       RemoveFromMessageQueue(AudioMessage::TYPE::VOLUME);
       RemoveFromMessageQueue(AudioMessage::TYPE::FILE);
       RemoveFromMessageQueue(AudioMessage::TYPE::DIR);
@@ -923,9 +930,9 @@ bool AudioFeedback::IsShutdownReported()
 
 // ----------------------------------------------------------------------------
 
-void AudioFeedback::ReportServiceMode()
+void AudioFeedback::ReportServiceMode(std::string txtPassphrase)
 {
-   m_pPriv->ReportServiceMode();
+   m_pPriv->ReportServiceMode(txtPassphrase);
 }
 
 // ----------------------------------------------------------------------------

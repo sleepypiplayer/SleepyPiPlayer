@@ -3,14 +3,19 @@
 //  file in the executable directory with name "sleepy.cfg"  example:
 //    # all characters after a hash will be ignored
 //    # only lines starting with a key-word are processed
-//    MP3_PATH             /SLEEPY_MP3/mp3              # files used for playback
-//    STORAGE_DIR          /SLEEPY_SAVE/save            # 100 x 4MB-files containing playback-position and volume
-//    SYSTEM_SOUND_PATH    /SLEEPY_FW/sleepy/SysMP3/german  # files used for audio-feedback
-//    NUMBER_FORMAT        ENGLISH                      # "ENGLISH" or "GERMAN"   e.g. say "sieben-und-zwanzig" or "twenty-seven"
-//    DISABLE_WIFI         ON                           # "ON" or "OFF"  default=ON  save battery by disabling wifi (Service-mode can still enable WIFI)
-//    AUTO_SHUTDOWN        25                           # time in minutes (-1: no shutdown)
-//    SRV_KEY_CHG_DIR      OFF                          # "ON" or "OFF"  default=OFF  single-press of blue service-key: change directory
-// license: free software   (sleepypiplayer(at)saftfresse.de)  [A.D.2025]
+//    MP3_PATH                /SLEEPY_MP3/mp3              # files used for playback
+//    STORAGE_DIR             /SLEEPY_SAVE/save            # 100 x 4MB-files containing playback-position and volume
+//    SYSTEM_SOUND_PATH       /SLEEPY_FW/sleepy/SysMP3/german  # files used for audio-feedback
+//    NUMBER_FORMAT           ENGLISH                      # "ENGLISH" or "GERMAN"   e.g. say "sieben-und-zwanzig" or "twenty-seven"
+//    DISABLE_WIFI            ON                           # "ON" or "OFF"  default=ON  save battery by disabling wifi (Service-mode can still enable WIFI)
+//    AUTO_SHUTDOWN           25                           # time in minutes (-1: no shutdown)
+//    SRV_KEY_CHG_DIR         OFF                          # "ON" or "OFF"  default=OFF  single-press of blue service-key: change directory
+//    WLAN_ACCESSPOINT_MODE   ON                           # ON: AccessPoint OFF: Wlan-Client
+//    WLAN_SSID               SleepyPiPlayer               # WLAN-Name
+//    WLAN_PASSPHRASE         Sleepy-MP3                   # WLAN-Password
+//    WLAN_COUNTRY            DE                           # WLAN country-code https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+//    SERVICE_REMOUNT_WRITE   /SLEEPY_MP3;/SLEEPY_SAVE     # Service-Mode remount these partitions with write-acccess
+// license: free software   (sleepypiplayer(at)saftfresse.de)  [A.D.2026]
 // - Do whatever you want with the software.
 // - Do not claim my work as your own.
 // - THIS SOFTWARE COMES WITH NO WARRANTIES, USE AT YOUR OWN RISK
@@ -104,6 +109,12 @@ public:
   std::string m_txtStorageDirPath;
   bool        m_bWifiOff = false;  // disable wifi
   bool        m_bAllowNextDirByServiceKey = false;
+  bool        m_bWlanAccessPointMode = true;
+  std::string m_txtWlanSSID = "SleepyPiPlayer";
+  std::string m_txtWlanPassphrase = "123123123";
+  std::string m_txtWlanCountry = "DE";
+  std::list<std::string> m_listRemountReadWrite;
+
   static StaticSystemConfigSysFilePath  m_SystemSoundPath;
   static StaticSystemConfigNumberFormat m_NumberFormat;
 };
@@ -173,6 +184,11 @@ void SystemConfigFile::PrivateData::DecodeLine(const char* txtRawLine)
    const char* txtWIFI_OFF  = "DISABLE_WIFI";
    const char* txtStorage   = "STORAGE_DIR";
    const char* txtServDir   = "SRV_KEY_CHG_DIR";
+   const char* txtWlanAP    = "WLAN_ACCESSPOINT_MODE";
+   const char* txtWlanSSID  = "WLAN_SSID";
+   const char* txtWlanPass  = "WLAN_PASSPHRASE";
+   const char* txtWlanCntry = "WLAN_COUNTRY";
+   const char* txtRemountRW = "SERVICE_REMOUNT_WRITE";
 
    std::string txtLine(txtRawLine);
    if (txtLine.find('#') != std::string::npos)
@@ -240,7 +256,7 @@ void SystemConfigFile::PrivateData::DecodeLine(const char* txtRawLine)
       }
    }
   if (StartsWith(txtLine, txtServDir))
-   {
+  {
       m_bAllowNextDirByServiceKey = false;
       txtLine.erase(0, strlen(txtServDir));
       TrimString(txtLine);
@@ -260,6 +276,68 @@ void SystemConfigFile::PrivateData::DecodeLine(const char* txtRawLine)
       txtLine.erase(0, strlen(txtStorage));
       TrimString(txtLine);
       m_txtStorageDirPath = txtLine;
+   }
+   if (StartsWith(txtLine, txtWlanAP))
+   {
+      m_bWlanAccessPointMode = false;
+      txtLine.erase(0, strlen(txtWlanAP));
+      TrimString(txtLine);
+      if (txtLine.length() == 2)
+      {
+         bool bEnable = true;
+         bEnable = (bEnable && (txtLine.at(0) == 'o' || txtLine.at(0) == 'O'));
+         bEnable = (bEnable && (txtLine.at(1) == 'n' || txtLine.at(1) == 'N'));
+         if (bEnable)
+         {
+            m_bWlanAccessPointMode = true;
+         }
+      }
+   }
+   if (StartsWith(txtLine, txtWlanSSID))
+   {
+      txtLine.erase(0, strlen(txtWlanSSID));
+      TrimString(txtLine);
+      m_txtWlanSSID = txtLine;
+   }
+   if (StartsWith(txtLine, txtWlanPass))
+   {
+      txtLine.erase(0, strlen(txtWlanPass));
+      TrimString(txtLine);
+      m_txtWlanPassphrase = txtLine;
+   }
+   if (StartsWith(txtLine, txtWlanCntry))
+   {
+      txtLine.erase(0, strlen(txtWlanCntry));
+      TrimString(txtLine);
+      m_txtWlanCountry = txtLine;
+   }
+
+   if (StartsWith(txtLine, txtRemountRW))
+   {   
+      txtLine.erase(0, strlen(txtRemountRW));
+      TrimString(txtLine);
+      m_listRemountReadWrite.clear();
+      int nLengthText = txtLine.length();
+      std::string txtElement;
+      for (int i = 0; i < nLengthText; i++)
+      {
+         if (txtLine.at(i) == ';')
+         {
+            if (txtElement.length() > 0)
+            {
+               m_listRemountReadWrite.push_back(txtElement);
+            }
+            txtElement.clear();
+         }
+         else
+         {
+            txtElement.push_back(txtLine[i]);
+         }
+      }
+      if (txtElement.length() > 0)
+      {
+         m_listRemountReadWrite.push_back(txtElement);
+      } 
    }
 }
 
@@ -323,6 +401,41 @@ std::string SystemConfigFile::GetPersistentStorageDirPath()
 bool SystemConfigFile::AllowNextDirByServiceKey()
 {
    return m_pPriv->m_bAllowNextDirByServiceKey;
+}
+
+// -----------------------------------------------------------------------------
+
+bool  SystemConfigFile::WlanAccessPointMode()
+{
+   return m_pPriv->m_bWlanAccessPointMode;
+}
+
+// -----------------------------------------------------------------------------
+
+std::string  SystemConfigFile::WlanSSID()
+{
+   return m_pPriv->m_txtWlanSSID;
+}
+
+// -----------------------------------------------------------------------------
+
+std::string  SystemConfigFile::WLANPassphrase()
+{
+   return m_pPriv->m_txtWlanPassphrase;
+}
+
+// -----------------------------------------------------------------------------
+
+std::string  SystemConfigFile::WLANCountry()
+{
+   return m_pPriv->m_txtWlanCountry;
+}
+
+// -----------------------------------------------------------------------------
+
+std::list<std::string>  SystemConfigFile::ServiceRemountReadWriteList()
+{
+   return m_pPriv->m_listRemountReadWrite;
 }
 
 

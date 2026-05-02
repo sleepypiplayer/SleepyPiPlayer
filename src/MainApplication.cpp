@@ -6,7 +6,7 @@
 //     - take care of auto-shutdown-timer
 //     - start shutdown if red-button was pressed
 //     - store audio-playback-position by using class-PersistentStorage
-// license: free software   (sleepypiplayer(at)saftfresse.de)  [A.D.2025]
+// license: free software   (sleepypiplayer(at)saftfresse.de)  [A.D.2026]
 // - Do whatever you want with the software.
 // - Do not claim my work as your own.
 // - THIS SOFTWARE COMES WITH NO WARRANTIES, USE AT YOUR OWN RISK
@@ -19,6 +19,7 @@
 #include "PersistentStorage.h"
 #include "SystemSoundCatalog.h"
 #include "NumberToSound.h"
+#include "ServiceMode.h"
 #include <cstdlib>
 #include <cstdio>
 #include <filesystem>
@@ -30,9 +31,8 @@
 
 // ----- forward-declarations ----
 void print_to_console(KeyInput::KEY key);
-void execute_thread_rfkill();
-void execute_thread_enable_wifi();
 void play_audiofeedback_shutdown(int nVolume, int nInMinutes); // nInMinutes -1: immediate
+void play_audiofeedback_wlan_fallback(int nVolume, std::string txtPassphrase);
 
 // ----------------------------------------------------------------------------
 
@@ -76,17 +76,17 @@ int main(int argc, char* argv[])
          printf("SysConfig Dis.Wifi:  %i\n\r", config.DisableWifi());
          printf("SysConfig shutdown:  %i\n\r", config.GetAutoShutdownInMinutes());
          printf("SysConfig SrvNxtDir: %i\n\r", config.AllowNextDirByServiceKey());
-
+         printf("SysConfig WLAN:      %s\n\r", config.WlanAccessPointMode()? "AP" : "Client");
+         printf("SysConfig W_SSID:    %s\n\r", config.WlanSSID().c_str());
+         printf("SysConfig W_Passphr: %s\n\r", config.WLANPassphrase().c_str());
+         printf("SysConfig W_Country: %s\n\r", config.WLANCountry().c_str());
 
          KeyInput key_input(config.AllowNextDirByServiceKey());
-
-         std::thread threadRfkill;
+         ServiceMode service_mode(config);
 
          if (config.DisableWifi())
          {
-            printf("#= rfkill block wifi\n");
-            std::thread threadTempRfkill( execute_thread_rfkill );
-            threadRfkill.swap(threadTempRfkill);
+            service_mode.DisableWlan();
          }
 
          PersistentStorage storage(config.GetPersistentStorageDirPath());
@@ -101,6 +101,12 @@ int main(int argc, char* argv[])
          }
          Mp3List.SetPlaybackPosFromStorage(storage.GetPlaybackPath(), storage.GetPlaybackTime());
 
+         std::string txtPassphrase;
+         if (config.WlanAccessPointMode())
+         {
+            txtPassphrase = config.WLANPassphrase();
+         }
+
          std::chrono::milliseconds durationSleep{15};
          bool bService  = false;
          bool bShutdown = false;
@@ -109,7 +115,8 @@ int main(int argc, char* argv[])
                   storage.GetVolume(),
                   &Mp3List,
                   config.GetAutoShutdownInMinutes(),
-                  storage.ChecksumProblemDetected()
+                  storage.ChecksumProblemDetected(),
+                  txtPassphrase
                );
             if (storage.ChecksumProblemDetected())
             {
@@ -143,9 +150,6 @@ int main(int argc, char* argv[])
             }
          }
 
-         if (threadRfkill.joinable())
-             threadRfkill.join();
-
          if (bShutdown && config.GetAutoShutdownInMinutes() >= 0)
          {
             printf("#= Shutdown\n");
@@ -157,12 +161,12 @@ int main(int argc, char* argv[])
          {
             printf("#= Service Mode\n");
 
-            std::thread threadService( execute_thread_enable_wifi );
-            threadService.detach();
+            service_mode.StartService();
 
             std::chrono::time_point<std::chrono::steady_clock> timeStart = std::chrono::steady_clock::now();
             std::chrono::time_point<std::chrono::steady_clock> timeNow   = std::chrono::steady_clock::now();
             std::chrono::minutes  durationShutdown{20};
+            std::string txtFallbackPassphrase;
             while (timeNow < (timeStart + durationShutdown) && !bShutdown && !bReceivedSigTerm)
             {
                timeNow = std::chrono::steady_clock::now();
@@ -172,6 +176,14 @@ int main(int argc, char* argv[])
                {
                   bShutdown = bShutdown || (key == KeyInput::KEY_Shutdown);
                }
+               if (txtFallbackPassphrase.empty())
+               {
+                  txtFallbackPassphrase = service_mode.GetFallbackPassphrase();
+                  if (!txtFallbackPassphrase.empty())
+                  {
+                     play_audiofeedback_wlan_fallback(storage.GetVolume(),txtFallbackPassphrase);
+                  }
+               }
             }
             if (bShutdown)
             {
@@ -180,7 +192,7 @@ int main(int argc, char* argv[])
                play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/-1);
                std::system("sudo shutdown --poweroff +0");
             }
-            else
+            else if (!bReceivedSigTerm)
             {
                play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/15);
                std::system("sudo shutdown --poweroff +15");
@@ -194,34 +206,6 @@ int main(int argc, char* argv[])
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-// do not wait for rfkill: play audio 0.7 seconds earlier
-void execute_thread_rfkill()
-{
-   std::system("sudo rfkill block wifi");
-   std::system("sudo rfkill block bluetooth");
-}
-
-// ----------------------------------------------------------------------------
-
-// do not wait for WIFI: immediate audio-feedback "shutting down"
-void execute_thread_enable_wifi()
-{
-   // Restart of wlan0 requires write-access to /etc/resolv.conf
-   // unused alternative to allow write-access to root-file-system: OverlayFileSystem
-   // if (std::filesystem::is_directory("/SLEEPY_TMPFS_OVERLAY"))
-   // {
-   //    std::system("sudo mount -t tmpfs -o size=2M none /SLEEPY_TMPFS_OVERLAY");
-   //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_tmpfs");
-   //    std::system("sudo mkdir /SLEEPY_TMPFS_OVERLAY/etc_work");
-   //    std::system("sudo mount -t overlay -o lowerdir=/etc,upperdir=/SLEEPY_TMPFS_OVERLAY/etc_tmpfs,workdir=/SLEEPY_TMPFS_OVERLAY/etc_work none /etc");
-   // }
-
-   std::system("sudo mount -o remount,rw /");
-   std::system("sudo rfkill unblock wifi");
-   std::system("sudo systemctl restart ifup@wlan0");
-}
-
-// ----------------------------------------------------------------------------
 
 // play shutdown audio-message
 // nInMinutes  X: "shutdwon in X minutes"  / -1 : "shutting down"
@@ -241,6 +225,7 @@ void play_audiofeedback_shutdown(int nVolume, int nInMinutes)
    {
       listMp3Path.push_back(catalog.Text_ShuttingDown());
    }
+   listMp3Path.push_back(catalog.Silence());
    int nFileLimit = listMp3Path.size();
    for (int i = 0; i < 20; i++)
       listMp3Path.push_back(catalog.Silence());
@@ -249,7 +234,8 @@ void play_audiofeedback_shutdown(int nVolume, int nInMinutes)
       nVolume,
       &Mp3ListShutdown,
       /* shudown  minutes:*/ 10,
-      /* checksum problem:*/ false);
+      /* checksum problem:*/ false,
+      /* passphrase:*/ "");
    std::chrono::milliseconds durationSleep{10};
    int nTimeLimit = (nInMinutes > 0)? 800 : 500;
    while (player.GetCurrentPlaybackInfo().GetFileNumber() <= nFileLimit && nTimeLimit > 0)
@@ -258,6 +244,37 @@ void play_audiofeedback_shutdown(int nVolume, int nInMinutes)
       --nTimeLimit;
    }
 }
+
+// ----------------------------------------------------------------------------
+
+void play_audiofeedback_wlan_fallback(int nVolume, std::string txtPassphrase)
+{
+   SystemSoundCatalog catalog;
+   std::list<std::string> listMp3Path;
+   listMp3Path.push_back(catalog.Silence());
+   listMp3Path.push_back(catalog.Text_WlanFallback());
+   listMp3Path.push_back(catalog.Silence());
+   catalog.SpellString(listMp3Path, txtPassphrase);
+   listMp3Path.push_back(catalog.Silence());
+   int nFileLimit = listMp3Path.size();
+   for (int i = 0; i < 20; i++)
+      listMp3Path.push_back(catalog.Silence());
+   Mp3DirFileList  Mp3ListFallback(listMp3Path);
+   AudioPlayer  player(
+      nVolume,
+      &Mp3ListFallback,
+      /* shudown  minutes:*/ 10,
+      /* checksum problem:*/ false,
+      /* passphrase:*/ "");
+   std::chrono::milliseconds durationSleep{10};
+   int nTimeLimit = 1000;
+   while (player.GetCurrentPlaybackInfo().GetFileNumber() <= nFileLimit && nTimeLimit > 0)
+   {
+      std::this_thread::sleep_for(durationSleep); // save cpu-power
+      --nTimeLimit;
+   }
+}
+
 // ----------------------------------------------------------------------------
 
 void print_to_console(KeyInput::KEY key)
@@ -271,6 +288,7 @@ void print_to_console(KeyInput::KEY key)
    case KeyInput::KEY_FileFastForw:
    case KeyInput::KEY_FileFastBack:
    case KeyInput::KEY_ANY:
+   case KeyInput::KEY_Service:
       if (key == static_old_key)  return;
       break;
    default: break;

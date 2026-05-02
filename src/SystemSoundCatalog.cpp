@@ -289,6 +289,20 @@ std::string SystemSoundCatalog::Text_Minute()
 
 // ----------------------------------------------------------------------------
 
+std::string SystemSoundCatalog::Text_WlanPassphrase()
+{
+   return m_pPriv->GetDirectory() + "sys_text_wlan_passphrase.mp3";
+}
+
+// ----------------------------------------------------------------------------
+
+std::string SystemSoundCatalog::Text_WlanFallback()
+{
+   return m_pPriv->GetDirectory() + "sys_text_wlan_fallback.mp3";
+}
+
+// ----------------------------------------------------------------------------
+
 std::string SystemSoundCatalog::GetChar(char txtCharacter)
 {
    return m_pPriv->GetDirectory() + m_pPriv->m_CharFile[(unsigned char)(txtCharacter)];

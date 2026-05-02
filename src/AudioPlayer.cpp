@@ -32,7 +32,8 @@ public:
       int nVolumePct,
       Mp3DirFileList* pFileList,
       int nAutoShutdownMinutes,
-      bool bChecksumProblem)
+      bool bChecksumProblem,
+      std::string txtPassphrase)
    : m_AudioFeedback(SAMPLE_RATE, CHANNELS, ENCODING)
    {
       m_AudioFeedback.SetVolume(nVolumePct);
@@ -41,6 +42,7 @@ public:
       m_nAutoShutdownMinutes  = nAutoShutdownMinutes;
       m_bShutdown             = false;
       m_bServiceMode          = false;
+      m_txtPassphrase         = txtPassphrase;
       m_timeAutoShutdownStart = std::chrono::steady_clock::now();
       m_Thread = std::thread(ThreadFunction, this);
       if (bChecksumProblem)
@@ -92,6 +94,8 @@ public:
    std::atomic<int>  m_nAutoShutdownMinutes;  // start auto-shutdown countdown some minutes after last key-press
    std::atomic<bool> m_bShutdown;      // tell MainApplication: shutdown required
    std::atomic<bool> m_bServiceMode;   // tell MainApplication: service-mode requested
+
+   std::string       m_txtPassphrase;  // ServiceMode with AccessPoint: spell WIFI-Passphrase
 
    unsigned char* m_pSampleBuffer   = nullptr;
    out123_handle* m_pHandleSoundOut = nullptr;
@@ -235,7 +239,7 @@ void AudioPlayer::PrivateData::ExecPlaybackThread()
                   case KeyInput::KEY_DirNext:    DirNext();         break;
                   case KeyInput::KEY_DirPrev:    DirPrev();         break;
                   case KeyInput::KEY_Info:       InfoRequest();     break;
-                  case KeyInput::KEY_Service:               m_AudioFeedback.ReportServiceMode(); break;
+                  case KeyInput::KEY_Service:               m_AudioFeedback.ReportServiceMode(m_txtPassphrase); break;
                   case KeyInput::KEY_SimulatedAutoShutdown: m_AudioFeedback.ReportShutdown();    break;
                   default: break;
                }
@@ -639,10 +643,11 @@ AudioPlayer::AudioPlayer(
    int nVolumePct,
    Mp3DirFileList* pFiles,
    int nAutoShutdownMinutes,
-   bool bChecksumProblem)
+   bool bChecksumProblem,
+   std::string txtPassphrase)
 {
    m_pPriv = std::make_unique<AudioPlayer::PrivateData>(
-      nVolumePct, pFiles, nAutoShutdownMinutes, bChecksumProblem);
+      nVolumePct, pFiles, nAutoShutdownMinutes, bChecksumProblem, txtPassphrase);
 }
 
 // ----------------------------------------------------------------------------

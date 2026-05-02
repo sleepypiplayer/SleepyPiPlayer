@@ -33,9 +33,11 @@ public:
    std::string Text_NoMP3Found();
    std::string Text_And();    // "und"  von "ein-und-zwanzig"
    std::string Text_Invalid();// "ungültig"  (number is negative or too big)
+   std::string Text_WlanPassphrase(); // "WLAN-Passwort"         / "WiFi-Passphrase"
+   std::string Text_WlanFallback();   // "WLAN-Notfallpasswort"  / "Wifi-Fallback-Passphrase"
 
    std::string GetChar(char txtCharacter);  // '1': eins / "one"
-   void SpellString(std::list<std::string>& listOutput, std::string txtInput);
+   void SpellString(std::list<std::string>& listOutput, std::string txtInput); // append to list
 
    std::string Number_0000();    // "null"   "zero"  -- less silence than GetChar('0')
    std::string Number_00x1();    // "ein" von "ein-und-zwanzig"
