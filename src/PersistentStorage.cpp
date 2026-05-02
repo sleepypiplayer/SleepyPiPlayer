@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <thread>
 
 
 // the standard-data-record is stored three times in order to detect SD-card problems
@@ -58,7 +59,13 @@ public:
    {
       for (int i = 0; i < NOF_RECORDS; i++) m_arrStorageNumber[i] = -1;
    }
-   virtual ~PrivateData() {}
+   virtual ~PrivateData() 
+   {
+      if (m_threadEnsureFilesExist.joinable())
+      {
+         m_threadEnsureFilesExist.join();
+      }
+   }
 
    std::string m_txtStorageDirPath;
 
@@ -86,6 +93,9 @@ public:
    // e.g. m_arrStorageNumber[55] contains storage number of 055PersistStorage.bin   (1..9999)
    int m_arrStorageNumber[NOF_RECORDS];     // storage-number found in storage-files   -1: not allocated
 
+   std::thread m_threadEnsureFilesExist;
+   static void ThreadFunctionEnsureFilesExist(PersistentStorage::PrivateData* pThis);
+
    std::string GetStorageFilePath(int nRecordIdx);
    void InvalidateData();
    bool WriteFile();
@@ -101,6 +111,13 @@ public:
    void DecodeAdditionalPos(unsigned char* buffer);
    int  GetNofAdditionalPlaybackPos();
 };
+
+// ----------------------------------------------------------------------------
+
+void PersistentStorage::PrivateData::ThreadFunctionEnsureFilesExist(PersistentStorage::PrivateData* pThis)
+{
+   pThis->EnsureFilesExist();
+}
 
 // ----------------------------------------------------------------------------
 
@@ -560,13 +577,19 @@ void PersistentStorage::PrivateData::ReadFiles()
       }
    }
    ReadAdditionalPlaybackPos();
+
+   m_threadEnsureFilesExist = std::thread( ThreadFunctionEnsureFilesExist, this );
 }
 
 // ----------------------------------------------------------------------------
 
 bool PersistentStorage::PrivateData::WriteFile()
 {
-   EnsureFilesExist();
+   if (m_threadEnsureFilesExist.joinable())
+   {
+      m_threadEnsureFilesExist.join();
+   }
+
    bool bSuccess = true;
 
    int nFreeRecordIdx = CalcFreeRecordIdx();
