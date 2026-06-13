@@ -145,7 +145,7 @@ public:
          m_pFallbackInstance = nullptr;
       }
 
-      delete m_pFallbackInstance;
+      delete pDeleteFallback;
 
       if (m_threadDisableWlan.joinable())
       {
