@@ -163,9 +163,12 @@ int main(int argc, char* argv[])
 
             service_mode.StartService();
 
+            std::chrono::minutes  durationShutdown{30};  // auto-shutdown in minutes in service-mode
+            std::chrono::minutes  durationAudioOut{4};   // repeated audio-output of "shutdown in XXX minutes"
             std::chrono::time_point<std::chrono::steady_clock> timeStart = std::chrono::steady_clock::now();
             std::chrono::time_point<std::chrono::steady_clock> timeNow   = std::chrono::steady_clock::now();
-            std::chrono::minutes  durationShutdown{20};
+            std::chrono::time_point<std::chrono::steady_clock> timeAudioOutput = std::chrono::time_point<std::chrono::steady_clock>::min();
+
             std::string txtFallbackPassphrase;
             while (timeNow < (timeStart + durationShutdown) && !bShutdown && !bReceivedSigTerm)
             {
@@ -175,6 +178,17 @@ int main(int argc, char* argv[])
                for (KeyInput::KEY key : keys)
                {
                   bShutdown = bShutdown || (key == KeyInput::KEY_Shutdown);
+                  if (key != KeyInput::KEY_NONE && key != KeyInput::KEY_Service)
+                  {
+                     timeStart = std::chrono::steady_clock::now();  // restart shutdown-timer on key-press
+                     timeAudioOutput = std::chrono::time_point<std::chrono::steady_clock>::min(); // immediate audio-feedback
+                  }
+               }
+               if (!bShutdown && (timeNow < timeAudioOutput || timeNow > (timeAudioOutput+durationAudioOut)))
+               {
+                  timeAudioOutput = std::chrono::steady_clock::now();
+                  std::chrono::minutes durationToShutdown = std::chrono::duration_cast<std::chrono::minutes>((timeStart + durationShutdown) - timeNow);
+                  play_audiofeedback_shutdown(storage.GetVolume(), durationToShutdown.count());
                }
                if (txtFallbackPassphrase.empty())
                {
@@ -185,17 +199,12 @@ int main(int argc, char* argv[])
                   }
                }
             }
-            if (bShutdown)
+            if (!bReceivedSigTerm)
             {
                printf("#= Shutdown\n");
                std::system("sudo shutdown --poweroff +1"); // just safety
                play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/-1);
                std::system("sudo shutdown --poweroff +0");
-            }
-            else if (!bReceivedSigTerm)
-            {
-               play_audiofeedback_shutdown(storage.GetVolume(),/*InMinutes:*/15);
-               std::system("sudo shutdown --poweroff +15");
             }
          }
       }

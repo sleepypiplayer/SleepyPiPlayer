@@ -366,6 +366,11 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
          else if (bService)
          {
             pThis->m_listDetectedKeys.push_back(KeyInput::KEY_Service);
+            if (nNofPressedKeys > 0 && nNofPressedKeysLastTime == 0)
+            {
+               pThis->m_listDetectedKeys.push_back(KEY_ANY); // restart timer in Service-Mode
+            }
+            nNofPressedKeysLastTime = nNofPressedKeys;
          }
          else if ( bLongFfFb &&
                   eNewKey != KeyInput::KEY_PlayFastForw &&
@@ -394,7 +399,7 @@ void KeyInput::PrivateData::ThreadFunction(KeyInput::PrivateData* pThis)
             }
             nNofPressedKeysLastTime = nNofPressedKeys;
          }
-         else
+         else if (!bService)
          {
             nNofPressedKeysLastTime = 0;  // some key-press was already detected: no need to stop auto-shutdown by KEY_ANY
          }
