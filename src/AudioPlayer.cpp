@@ -38,12 +38,13 @@ public:
    {
       m_AudioFeedback.SetVolume(nVolumePct);
       m_nVolumePct            = nVolumePct;
-      m_pFileList             = pFileList;
-      m_nAutoShutdownMinutes  = nAutoShutdownMinutes;
-      m_bShutdown             = false;
-      m_bServiceMode          = false;
-      m_txtPassphrase         = txtPassphrase;
-      m_timeAutoShutdownStart = std::chrono::steady_clock::now();
+      m_pFileList               = pFileList;
+      m_nAutoShutdownMinutes    = nAutoShutdownMinutes;
+      m_bShutdown               = false;
+      m_bServiceMode            = false;
+      m_txtPassphrase           = txtPassphrase;
+      m_timeAutoShutdownStart   = std::chrono::steady_clock::now();
+      m_timeShutdownCancelStart = std::chrono::time_point<std::chrono::steady_clock>::max();
       m_Thread = std::thread(ThreadFunction, this);
       if (bChecksumProblem)
       {
@@ -90,6 +91,9 @@ public:
    std::atomic<int>      m_nVolumePct;       // currently used audio-volume
 
    std::chrono::time_point<std::chrono::steady_clock> m_timeAutoShutdownStart; // time of last key-press
+
+   //  ignore some key-presses for a while in case of accidental double-press of keys when cancelling shutdown
+   std::chrono::time_point<std::chrono::steady_clock> m_timeShutdownCancelStart; // time of key-press that canceled shutdown
 
    std::atomic<int>  m_nAutoShutdownMinutes;  // start auto-shutdown countdown some minutes after last key-press
    std::atomic<bool> m_bShutdown;      // tell MainApplication: shutdown required
@@ -188,11 +192,19 @@ void AudioPlayer::PrivateData::ExecPlaybackThread()
             for (KeyInput::KEY key : m_listUserRequests)
             {
                m_timeAutoShutdownStart = std::chrono::steady_clock::now();
+               std::chrono::seconds durationIgnoreKeys{1};
+               std::chrono::time_point<std::chrono::steady_clock> timeNow = std::chrono::steady_clock::now();
 
                if (m_AudioFeedback.IsReportingShutdown())
                {
                   m_AudioFeedback.CancelShutdown();
                   key = KeyInput::KEY_NONE; // key-press canceled shutdown: do not change file/volume/...
+                  m_timeShutdownCancelStart = std::chrono::steady_clock::now();
+               }
+               else if (timeNow >= m_timeShutdownCancelStart && timeNow < (m_timeShutdownCancelStart + durationIgnoreKeys))
+               {
+                  // ignore key-press after cancel-shutdown for a second: probably accicental double-press of button
+                  key = KeyInput::KEY_NONE; // do not change file/volume/...
                }
                else if (key == KeyInput::KEY_Shutdown)
                {
