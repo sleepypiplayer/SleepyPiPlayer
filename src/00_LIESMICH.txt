@@ -272,6 +272,12 @@ ssh dietpi@192.168.1.123
   sudo apt-get upgrade
   sudo reboot
 
+- - -
+
+Hinweis: falls apt-get update  nicht funktioniert
+ SSL connection failed: error:0A000086:SSL routines::certificate verify failed / Success
+-> Datum einstellen:   date -s '2026-06-14 12:34:56'
+
 -----
 
 swap-file löschen: Schreibvorgänge auf die SD-Karte vermeiden
@@ -437,11 +443,11 @@ sudo nano /etc/fstab
 # "ro" anhängen: "read-only"  bei partition.1,  partition.2, partition.3 and partition.6
 # => partition.5 "SLEEPY_SAVE" muss beschreibbar bleiben
 # WLAN-Probleme: Man kann immer noch die SD-Karte entnehmen und fstab und alle anderen Dateien editieren.
-PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    2
-PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    1
-PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    2
-PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    2
-PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    2
+PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    0
+PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    0
+PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    0
+PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    0
+PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    0
 
 ---
 

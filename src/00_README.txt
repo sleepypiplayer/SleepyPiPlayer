@@ -267,6 +267,12 @@ ssh dietpi@192.168.1.123
   sudo apt-get upgrade
   sudo reboot
 
+- - -
+
+hint: if apt-get update  does not work because of
+ SSL connection failed: error:0A000086:SSL routines::certificate verify failed / Success
+-> set date:   date -s '2026-06-14 12:34:56'
+
 -----
 
 remove swap-file: we try to avoid writing to the SD-card
@@ -432,11 +438,11 @@ sudo nano /etc/fstab
 # add option "ro" : read-only   to partition.1,  partition.2, partition.3 and partition.6
 # => keep partition.5 "SLEEPY_SAVE" read-write
 # problems with WIFI: you can still remove the SD-card and edit fstab and all other files.
-PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    2
-PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    1
-PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    2
-PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    2
-PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    2
+PARTUUID=xxxxxxxx-01  /boot         vfat    noatime,lazytime,ro                      0    0
+PARTUUID=xxxxxxxx-02  /             ext4    noatime,lazytime,ro                      0    0
+PARTUUID=xxxxxxxx-03 /SLEEPY_FW     ext4    defaults,noatime,lazytime,ro             0    0
+PARTUUID=xxxxxxxx-05 /SLEEPY_SAVE   vfat    defaults,noatime,dmask=000,fmask=111     0    0
+PARTUUID=xxxxxxxx-06 /SLEEPY_MP3    ext4    defaults,noatime,lazytime,ro             0    0
 
 ---
 
